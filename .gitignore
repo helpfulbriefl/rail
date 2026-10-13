@@ -1,0 +1,34 @@
+# Dependencies
+node_modules/
+
+# Frontend build output
+dist/
+
+# Tauri / Rust build output (debug + release artifacts, PDBs)
+src-tauri/target/
+# Regenerated Tauri ACL/schemas (rebuild locally with `cargo build`)
+src-tauri/gen/
+
+# Local runtime config (per-machine settings, never published)
+rail.config.json
+
+# Playwright / test artifacts
+playwright-report/
+test-results/
+qa/shots/
+
+# Logs, secret-shaped files, auth caches
+*.log
+.env*
+*.pem
+*.key
+**/.auth/
+
+# Bro proof media (large / binary)
+.bro/**/proof/**/*.zip
+.bro/**/proof/**/*.webm
+.bro/**/proof/**/*.mp4
+
+# OS junk
+Thumbs.db
+.DS_Store

@@ -1,0 +1,49 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Rail",
+  "version": "1.0.0",
+  "identifier": "dev.rail.dock",
+  "build": {
+    "frontendDist": "../dist",
+    "devUrl": "http://localhost:1420",
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build"
+  },
+  "app": {
+    "withGlobalTauri": false,
+    "security": { "csp": null },
+    "windows": [
+      {
+        "label": "rail",
+        "title": "Rail",
+        "url": "index.html",
+        "width": 120, "height": 560,
+        "visible": false, "decorations": false, "transparent": true, "shadow": false,
+        "alwaysOnTop": true, "skipTaskbar": true, "resizable": false, "focus": false,
+        "dragDropEnabled": true
+      },
+      {
+        "label": "flyout",
+        "title": "Rail flyout",
+        "url": "index.html",
+        "width": 300, "height": 240,
+        "visible": false, "decorations": false, "transparent": true, "shadow": false,
+        "alwaysOnTop": true, "skipTaskbar": true, "resizable": false, "focus": false,
+        "dragDropEnabled": false
+      },
+      {
+        "label": "settings",
+        "title": "Rail — настройки",
+        "url": "index.html",
+        "width": 560, "height": 720,
+        "visible": false, "decorations": false, "transparent": true, "shadow": false,
+        "resizable": false, "center": true, "skipTaskbar": false,
+        "dragDropEnabled": false
+      }
+    ]
+  },
+  "bundle": {
+    "active": false,
+    "icon": ["icons/32x32.png", "icons/128x128.png", "icons/icon.png", "icons/icon.ico"]
+  }
+}

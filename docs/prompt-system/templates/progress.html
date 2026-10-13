@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>BRO · прогресс</title>
+<style>
+:root{--bg:#F7F7F5;--card:#FFFFFF;--text:#16181D;--muted:#5B6170;--line:#E6E7EB;--accent:#4F46E5;--ok:#16A34A;--warn:#D97706;--bad:#DC2626;--off:#9CA3AF;
+--shadow:0 1px 2px rgba(0,0,0,.04),0 8px 24px rgba(0,0,0,.05);font-family:Inter,Geist,"Segoe UI",system-ui,sans-serif}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-size:15px;line-height:1.45}
+main{max-width:1120px;margin:0 auto;padding:28px 24px 48px}
+header{display:flex;justify-content:space-between;align-items:baseline;gap:16px;flex-wrap:wrap;margin-bottom:18px}
+h1{font-size:22px;margin:0;font-weight:650;letter-spacing:-.01em}.sub{color:var(--muted);font-size:13px}
+.grid{display:grid;grid-template-columns:repeat(6,1fr);gap:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);padding:18px 20px;animation:up .35s ease both}
+.hero{grid-column:span 4}.side{grid-column:span 2}.m{grid-column:span 2}
+.bar{display:flex;gap:6px;margin:6px 0 12px}.cell{flex:1;height:14px;border-radius:5px;background:#EEF0F3}
+.cell.on{background:var(--accent)}.big{font-size:30px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}.chip{border:1px solid var(--line);border-radius:999px;padding:3px 10px;font-size:13px;background:#fff;white-space:nowrap}
+.chip.done{border-color:#BBF7D0;background:#F0FDF4}.chip.run{border-color:#C7D2FE;background:#EEF2FF;font-weight:600}.chip.wait{border-color:#FDE68A;background:#FFFBEB}
+.chip.todo{color:var(--muted)}.k{color:var(--muted);font-size:13px}.v{font-size:24px;font-weight:650;font-variant-numeric:tabular-nums}
+.chain{grid-column:span 6}.ask{font-size:17px;font-weight:600;margin:4px 0}.turn{display:inline-block;background:#EEF2FF;color:var(--accent);border-radius:8px;padding:2px 8px;font-weight:600}
+details{grid-column:span 6}summary{cursor:pointer;font-weight:600;list-style:none}summary::-webkit-details-marker{display:none}
+summary:before{content:"▶ ";color:var(--muted);font-size:11px}details[open] summary:before{content:"▼ "}
+table{width:100%;border-collapse:collapse;margin-top:10px;font-variant-numeric:tabular-nums}th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);font-size:14px}
+th{color:var(--muted);font-weight:500}.PASS{color:var(--ok)}.PARTIAL{color:var(--warn)}.FAIL{color:var(--bad)}
+button{border:1px solid var(--line);background:#fff;border-radius:8px;padding:5px 10px;font:inherit;font-size:13px;cursor:pointer}
+@keyframes up{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.card{animation:none}}
+@media (max-width:820px){.hero,.side,.m{grid-column:span 6}}
+</style>
+</head>
+<body>
+<main id="app"><p class="sub">Нет данных: рядом с этой страницей должен лежать <b>state.js</b> (его пишет кодер командой bro).</p></main>
+<script src="state.js"></script>
+<script>
+(function(){
+var s=window.BRO_STATE;if(!s)return;
+function e(t){return String(t==null?"—":t).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
+var icon={done:"✅",run:"▶",wait:"🛑",todo:"○",pause:"⏸",frozen:"🧊"},m=s.metrics||{},cells="",i,on=Math.round(8*(s.done||0)/Math.max(1,s.total||1));
+for(i=0;i<8;i++)cells+='<div class="cell'+(i<on?' on':'')+'"></div>';
+var chain=(s.road||[]).map(function(r){return '<span class="chip '+e(r.status)+'">'+(icon[r.status]||"○")+" "+e(r.title||r.id)+(r.stop?" 🛑":"")+"</span>"}).join('<span class="k">→</span>')+'<span class="k">→</span><span class="chip">🏁</span>';
+var ok=0,part=0,bad=0,rows=(s.waves||[]).map(function(w){if(w.verdict=="PASS")ok++;else if(w.verdict=="PARTIAL")part++;else if(w.verdict=="FAIL")bad++;
+return "<tr><td>"+e(w.wave)+'</td><td class="'+e(w.verdict)+'">'+e(w.verdict)+"</td><td>"+e(w.done)+"/"+e(w.tasks)+"</td><td>"+e(w.defects)+"</td><td>"+e(w.minutes)+"</td><td>"+e(w.gh)+"</td></tr>"}).join("");
+function card(k,v,h){return '<div class="card m"><div class="k">'+k+'</div><div class="v">'+e(v)+'</div><div class="k">'+h+"</div></div>"}
+document.getElementById("app").innerHTML=
+'<header><h1>'+e(s.project)+' · BRO '+e(s.ver)+'</h1><div class="row"><span class="sub">режим '+e(s.mode)+' · волна '+e(s.wave)+' · обновлено '+e(s.updated)+'</span><button onclick="location.reload()">Обновить</button></div></header>'+
+'<div class="grid"><div class="card hero"><div class="k">Готовность</div><div class="bar">'+cells+'</div><div class="row"><span class="big">'+e(s.done)+' из '+e(s.total)+'</span><span class="k">'+e(s.pct)+' % · сейчас «'+e(s.current)+'»</span></div></div>'+
+'<div class="card side"><div class="k">Ход за</div><div class="turn">'+e(s.turn_text)+'</div><div class="k" style="margin-top:10px">Тебе</div><div class="ask">'+e(s.todo)+'</div><div class="k">Дальше: '+e(s.next_stop)+'</div></div>'+
+'<div class="card chain"><div class="k" style="margin-bottom:8px">Путь</div><div class="row">'+chain+'</div></div>'+
+card("🎯 С первого раза",m.first_pass,"волны PASS / все")+card("🙈 Ложные «готово»",m.false_done,"должно быть 0")+card("⏱ Волна, мин",m.minutes,"ожидание "+e(m.wait)+" мин")+
+card("🪙 ≈ptok на задачу",m.ptok_task,"аналитик + кодер")+card("🔌 GitHub за волну",m.gh,"норма ≤ 5")+card("🧩 Оценка задания K",m.k,"из 4 · отчёта O "+e(m.o))+
+'<details class="card"><summary>Волны · '+(s.waves||[]).length+' · 🟢'+ok+' 🟡'+part+' 🔴'+bad+'</summary><table><tr><th>Волна</th><th>Вердикт</th><th>Задачи</th><th>❌</th><th>Мин</th><th>GitHub</th></tr>'+rows+"</table></details></div>";
+setTimeout(function(){location.reload()},60000);
+})();
+</script>
+</body>
+</html>

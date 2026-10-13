@@ -1,0 +1,159 @@
+import { AnimatePresence, motion } from 'motion/react';
+import { FolderOpen, Layers } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import type { FlyoutCmd } from '../bridge/types';
+import { Lamp } from '../ui/Lamp';
+import { Num } from '../ui/Num';
+import { Sparkline } from '../ui/Sparkline';
+import { ago, bytes, midPath, rate, uptime } from '../ui/format';
+import { lampOf } from '../ui/status';
+import { useApp } from '../ui/useApp';
+
+export function Flyout() {
+  const { api, config } = useApp();
+  const [cmd, setCmd] = useState<FlyoutCmd | null>(null);
+  const [open, setOpen] = useState(false);
+  const seq = useRef(0);
+  useEffect(
+    () =>
+      api.onFlyout((c) => {
+        seq.current = c.seq;
+        if (c.action === 'show') {
+          setCmd(c);
+          setOpen(true);
+        } else setOpen(false);
+      }),
+    [api],
+  );
+  const item = config.items.find((i) => i.id === cmd?.id);
+  const side = cmd?.side ?? config.settings.side;
+  const from = { right: { x: 10 }, left: { x: -10 }, bottom: { y: 10 }, top: { y: -10 } }[side];
+  const origin = { right: '100% 50%', left: '0% 50%', bottom: '50% 100%', top: '50% 0%' }[side];
+
+  return (
+    <div className="fly-stage">
+      <AnimatePresence onExitComplete={() => void api.flyoutHidden(seq.current)}>
+        {open && item && cmd && (
+          <motion.div
+            key={cmd.seq}
+            className="card"
+            style={{ transformOrigin: origin }}
+            initial={{ opacity: 0, scale: 0.94, filter: 'blur(4px)', ...from }}
+            animate={{ opacity: 1, scale: 1, filter: 'blur(0px)', x: 0, y: 0 }}
+            exit={{ opacity: 0, scale: 0.96, ...from, transition: { duration: 0.12 } }}
+            transition={{ type: 'spring', stiffness: 520, damping: 34 }}
+          >
+            {cmd.kind === 'metrics' ? <Metrics id={item.id} /> : <Info id={item.id} />}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+function Head({ id, right }: { id: string; right?: React.ReactNode }) {
+  const { config } = useApp();
+  const item = config.items.find((i) => i.id === id)!;
+  return (
+    <div className="card-head">
+      {item.icon ? <img className="card-icon" src={item.icon} alt="" /> : <span className="card-icon tile-fallback">{item.name[0]}</span>}
+      <span className="card-title">{item.name}</span>
+      {right}
+    </div>
+  );
+}
+
+function Info({ id }: { id: string }) {
+  const { config } = useApp();
+  const item = config.items.find((i) => i.id === id)!;
+  const last = ago(item.lastLaunch);
+  const added = ago(item.addedAt);
+  return (
+    <>
+      <Head id={id} right={<span className="chip">{item.kind === 'app' ? 'APP' : item.kind === 'folder' ? 'DIR' : 'FILE'}</span>} />
+      <div className="stats3">
+        <Stat v={last.v} u={last.u} k="запуск" />
+        <Stat v={String(item.launchCount)} u="×" k="запусков" />
+        <Stat v={added.v} u={added.u} k="на панели" />
+      </div>
+      <div className="path" title={item.launchPath}>
+        <FolderOpen size={12} />
+        <span>{midPath(item.launchPath)}</span>
+      </div>
+    </>
+  );
+}
+
+function Stat({ v, u, k }: { v: string; u: string; k: string }) {
+  return (
+    <div className="stat">
+      <span className="stat-k">{k}</span>
+      <span className="stat-v">
+        {v}
+        <small>{u}</small>
+      </span>
+    </div>
+  );
+}
+
+function Metrics({ id }: { id: string }) {
+  const { rt, hist } = useApp();
+  const r = rt.items[id];
+  const h = hist[id] ?? { cpu: [], mem: [], io: [] };
+  if (!r) return <Head id={id} />;
+  const mem = bytes(r.mem);
+  return (
+    <>
+      <Head
+        id={id}
+        right={
+          <span className="head-badges">
+            <span className="badge">
+              <Lamp state={lampOf(r, null)} size={6} />
+              {r.hung ? 'не отвечает' : r.windows > 1 ? `×${r.windows}` : 'окно'}
+            </span>
+            <span className="badge">
+              <Layers size={11} />
+              {r.procs}
+            </span>
+          </span>
+        }
+      />
+      <div className="grid2">
+        <div className="tile-m">
+          <span className="m-k">CPU</span>
+          <span className="m-v">
+            <Num value={r.cpu} digits={1} />
+            <small>%</small>
+          </span>
+          <Sparkline data={h.cpu} max={10} color="var(--accent)" />
+        </div>
+        <div className="tile-m">
+          <span className="m-k">RAM</span>
+          <span className="m-v">
+            <Num value={Number(mem.v)} digits={mem.u === 'GB' ? 2 : mem.u === 'MB' && r.mem < 1e8 ? 1 : 0} />
+            <small>{mem.u}</small>
+          </span>
+          <Sparkline data={h.mem} color="var(--lamp-mem)" />
+        </div>
+        <div className="tile-m">
+          <span className="m-k">ДИСК</span>
+          <span className="m-io">
+            <span>
+              <i className="io-r" />R {rate(r.read)}
+            </span>
+            <span>
+              <i className="io-w" />W {rate(r.write)}
+            </span>
+          </span>
+          <Sparkline data={h.io} color="var(--lamp-io)" h={14} />
+        </div>
+        <div className="tile-m">
+          <span className="m-k">В РАБОТЕ</span>
+          <span className="m-v m-time">{uptime(r.uptime)}</span>
+          <span className="m-sub">{r.minimized ? 'свёрнуто' : 'активно'}</span>
+        </div>
+      </div>
+    </>
+  );
+}

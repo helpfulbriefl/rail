@@ -1,0 +1,135 @@
+/* ==========================================================================
+   Rail design tokens — one source of truth for every theme.
+   Rule: components use only var(--*) tokens, never raw colours.
+   ========================================================================== */
+
+:root {
+  /* spacing (4-pt scale) */
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 24px;
+
+  /* radii */
+  --r-micro: 7px;
+  --r-tile: 13px;
+  --r-block: 12px;
+  --r-card: 16px;
+  --r-rail: 22px;
+  --r-pill: 999px;
+
+  /* type */
+  --font-ui: "Geist Variable", "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  --font-num: "Geist Mono Variable", "Cascadia Mono", consolas, monospace;
+  --fs-micro: 10px;
+  --fs-small: 11px;
+  --fs-body: 12.5px;
+  --fs-title: 13.5px;
+  --fs-metric: 15px;
+
+  /* status lamps — the "traffic light" */
+  --lamp-run: #22c55e;
+  --lamp-load: #f59e0b;
+  --lamp-hung: #ef4444;
+  --lamp-io: #3b82f6;
+  --lamp-mem: #a855f7;
+  --lamp-idle: #a1a1aa;
+
+  /* motion */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --dur-fast: 140ms;
+  --dur-mid: 220ms;
+}
+
+/* ---------- Classic · light (Windows 11 taskbar, light) ---------- */
+[data-theme="classic-light"] {
+  --font-ui: "Segoe UI Variable Text", "Segoe UI", "Geist Variable", system-ui, sans-serif;
+  --surface: rgb(243 243 243 / 96%);
+  --surface-2: rgb(255 255 255 / 70%);
+  --border: rgb(0 0 0 / 9%);
+  --hairline: rgb(0 0 0 / 7%);
+  --text: #1a1a1a;
+  --muted: #5f5f5f;
+  --faint: #8a8a8a;
+  --hover: rgb(0 0 0 / 5%);
+  --press: rgb(0 0 0 / 9%);
+  --block-bg: rgb(255 255 255 / 85%);
+  --block-border: rgb(0 0 0 / 8%);
+  --accent: #005fb8;
+  --accent-soft: rgb(0 95 184 / 12%);
+  --shadow: 0 8px 28px rgb(0 0 0 / 14%), 0 1px 2px rgb(0 0 0 / 8%);
+  --shadow-lift: 0 12px 28px rgb(0 0 0 / 20%);
+  --track: rgb(0 0 0 / 8%);
+  --r-rail: 12px;
+  --r-tile: 6px;
+  --r-block: 6px;
+  --r-card: 10px;
+}
+
+/* ---------- Classic · dark (Windows 11 taskbar, dark) ---------- */
+[data-theme="classic-dark"] {
+  --font-ui: "Segoe UI Variable Text", "Segoe UI", "Geist Variable", system-ui, sans-serif;
+  --surface: rgb(32 32 32 / 96%);
+  --surface-2: rgb(255 255 255 / 5%);
+  --border: rgb(255 255 255 / 9%);
+  --hairline: rgb(255 255 255 / 7%);
+  --text: #fff;
+  --muted: rgb(255 255 255 / 66%);
+  --faint: rgb(255 255 255 / 42%);
+  --hover: rgb(255 255 255 / 7%);
+  --press: rgb(255 255 255 / 4%);
+  --block-bg: rgb(255 255 255 / 7%);
+  --block-border: rgb(255 255 255 / 8%);
+  --accent: #60cdff;
+  --accent-soft: rgb(96 205 255 / 14%);
+  --shadow: 0 8px 32px rgb(0 0 0 / 45%), 0 0 0 1px rgb(0 0 0 / 30%);
+  --shadow-lift: 0 12px 32px rgb(0 0 0 / 55%);
+  --track: rgb(255 255 255 / 10%);
+  --lamp-idle: #71717a;
+  --r-rail: 12px;
+  --r-tile: 6px;
+  --r-block: 6px;
+  --r-card: 10px;
+}
+
+/* ---------- Porcelain (chef's light, Notion/Atomic-like blocks) ---------- */
+[data-theme="porcelain"] {
+  --surface: linear-gradient(180deg, #fdfcfb 0%, #f6f4f0 100%);
+  --surface-2: #fff;
+  --border: #e6e3de;
+  --hairline: #eceae6;
+  --text: #2c2c2b;
+  --muted: #7d7a75;
+  --faint: #a9a59f;
+  --hover: rgb(44 44 43 / 5%);
+  --press: rgb(44 44 43 / 9%);
+  --block-bg: #fff;
+  --block-border: #e6e3de;
+  --accent: #2783de;
+  --accent-soft: #e5f2fc;
+  --shadow: 0 1px 2px rgb(0 0 0 / 5%), 0 10px 30px rgb(60 50 30 / 10%);
+  --shadow-lift: 0 14px 30px rgb(60 50 30 / 18%);
+  --track: #efede9;
+}
+
+/* ---------- Aurora (chef's special: pearl glass + iridescent edge) ---------- */
+[data-theme="aurora"] {
+  --surface: linear-gradient(160deg, rgb(255 255 255 / 97%) 0%, rgb(246 245 255 / 96%) 60%, rgb(250 245 255 / 96%) 100%);
+  --surface-2: rgb(255 255 255 / 85%);
+  --border: rgb(99 102 241 / 16%);
+  --hairline: rgb(99 102 241 / 12%);
+  --text: #1e1b3a;
+  --muted: #6b6889;
+  --faint: #a29fbf;
+  --hover: rgb(99 102 241 / 8%);
+  --press: rgb(99 102 241 / 14%);
+  --block-bg: rgb(255 255 255 / 92%);
+  --block-border: rgb(99 102 241 / 18%);
+  --accent: #6366f1;
+  --accent-soft: rgb(99 102 241 / 12%);
+  --shadow: 0 1px 2px rgb(30 27 58 / 6%), 0 12px 36px rgb(99 102 241 / 18%);
+  --shadow-lift: 0 14px 30px rgb(99 102 241 / 28%);
+  --track: rgb(99 102 241 / 10%);
+  --r-rail: 24px;
+}

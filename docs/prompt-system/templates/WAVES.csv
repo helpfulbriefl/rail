@@ -1,0 +1,1 @@
+wave,ver,build,layer,t_issued,t_start,t_report,t_accept,tasks,done,gates_first,repair,diff_files,diff_add,diff_del,out_of_scope,q,contradictions,proof_ok,proof_req,k,o,spot,false_done,defects,causes,owner_touches,owner_fixes,gh_calls,ctx_pct,an_in,an_out,cd_in,cd_out,prompt_weight,friction_cd,friction_an,verdict

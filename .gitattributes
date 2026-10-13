@@ -1,0 +1,27 @@
+# Text: normalize to CRLF on Windows working tree, keep clean diffs
+*.md   text eol=crlf
+*.ts   text eol=crlf
+*.tsx  text eol=crlf
+*.css  text eol=crlf
+*.json text eol=crlf
+*.yml  text eol=crlf
+*.yaml text eol=crlf
+*.rs   text eol=crlf
+*.toml text eol=crlf
+*.mjs  text eol=crlf
+*.js   text eol=crlf
+*.html text eol=crlf
+*.ps1  text eol=crlf
+*.cmd  text eol=crlf
+*.bat  text eol=crlf
+
+# Binary: never diff / normalize
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.ico  binary
+*.gif  binary
+*.zip  binary
+*.woff2 binary
+*.woff binary
+*.bundle binary

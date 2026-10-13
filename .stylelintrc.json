@@ -1,0 +1,13 @@
+{
+  "extends": ["stylelint-config-standard"],
+  "rules": {
+    "selector-class-pattern": "^[a-z][a-z0-9-]*$",
+    "property-no-vendor-prefix": [true, { "ignoreProperties": ["user-drag", "font-smoothing"] }],
+    "selector-no-vendor-prefix": [true, { "ignoreSelectors": ["::-webkit-slider-thumb"] }],
+    "declaration-no-important": true,
+    "color-no-invalid-hex": true,
+    "declaration-block-no-duplicate-properties": true,
+    "no-descending-specificity": null,
+    "number-max-precision": 3
+  }
+}
