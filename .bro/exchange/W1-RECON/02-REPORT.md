@@ -1,6 +1,6 @@
 ---
 wave: W1-RECON · ver: v3.0 · t_start: 2026-10-13 21:01 · t_report: 2026-10-13 21:09
-commit: ef1a3c1 · tag: ❌ · push: ❌ · bundle: - · pack: - · exchange: -
+commit: 2e5e014 · tag: w1-snapshot · push: ✅ · bundle: - · pack: - · exchange: -
 tasks: 6 · done: 6 · gates_first: yes · repair: 0 · proof_ok: 11 · proof_req: 12
 diff_files: 0 · diff_add: 0 · diff_del: 0 · out_of_scope: 0 · q: 3 · contradictions: 2
 K1: 1 · K2: 0 · K3: 1 · K4: 1 · k_why: K2=0: SPEC §9.1/§9.2/§9.10 claim "closed" but Owner still reports drop/+/RAM broken, and α drifts (SPEC 0.35 vs code 0.25) → doc/code contradiction. · friction_cd: #no-access
@@ -10,7 +10,7 @@ cd_in: 5582 · cd_out: 1863 · prompt_weight: 4515 · an_in_prev: - · an_out_pr
 
 ## Tasks
 1 ✅ `recon/01_chronology.md` — preflight read-only: resolved SYS, read rules, recorded env (Win11 Pro 26300, PS 5.1.26100.9444, Node v24.16.0, cargo 1.98.1, git 2.54.0, non-admin, DPI 96, 2560×1080); exe SHA-256 `22B21D28…` (2026-10-04 23:25:01 +03). P↔exe mapping UNKNOWN (Q-SRC/Q-009). No P change.
-2 ✅ `recon/02_repomap.md` — safe export: 48 product files hash-identical P→Q; fresh clone Q @ `ef1a3c1`, tag `w1-snapshot`; pushed `main` + tag only (`Q\push-main.log`, `Q\push-tag.log`); P `.git`/`.bro` untouched. Q-005: CI `build.yml` excluded (token lacks `workflow` scope).
+2 ✅ `recon/02_repomap.md` — safe export: 48 product files hash-identical P→Q; fresh clone Q @ `ef1a3c1`, tag `w1-snapshot`; pushed `main` + tag only (`Q\push-main.log`, `Q\push-tag.log`); P `.git`/`.bro` untouched. REPORT commit `2e5e014` published to remote `main` and verified separately. Q-005: CI `build.yml` excluded (token lacks `workflow` scope).
 3 ✅ `docs/prompt-system/` — prompt snapshot: 34 generic files + `MANIFEST.sha256` + `SOURCE.md` (HEAD `e35e7e2…`); `.git/`, `docs/legacy/`, `metrics/*` excluded; secret scan 0.
 4 ✅ `proof/native-baseline.md` — native stand on delivered `Rail.exe`: open panel (edge reveal), empty-panel CPU/RAM (22%→21% sys, 30552→30474 MB), «+» ×3 (no dialog on stale binary), drop+reorder+hover-card → Q-008/Q-009 unavailable, not PASS.
 5 ✅ `recon/03–09` + `.bro/MAP.md` + `README.md` — truth map, stack, alive/dead, config/secrets, leftovers, gates baseline (build/lint/qa BLOCKED, no deps), project Q&A. README now states dev status + real build steps + open defects.
