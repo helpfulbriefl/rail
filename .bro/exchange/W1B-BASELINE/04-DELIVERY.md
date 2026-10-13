@@ -1,0 +1,2 @@
+# W1B delivery addendum — 2026-10-13
+Original REPORT push:❌ is a historical pre-delivery state. Later delivery used existing stored owner credentials with command-local GCM, without global gh/account/helper/remote changes. Owner/coder ls-remote reported main and w1b-baseline-done both 6f48c5066441c2cae7a219fad74d9178c345b173. Analyst independently fetched published REPORT via current GitHub main at that SHA. No tag force/reset or report rewriting required. Publication is accepted, functional PASS is not. See 03-ACCEPT.md for PARTIAL and next wave.
