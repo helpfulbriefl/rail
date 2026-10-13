@@ -33,6 +33,11 @@ React 19.3 · TS 5.9.3 · Motion 14 · Vite 8.3.2 · Tauri 2.12 · windows 0.62 
 - **D-004** Work in fresh clone Q; P untouched; if Q exists/reparse → STOP.
 - **D-005** No raw videos / private metrics / local creds / diagnostic dumps / private git history. License: record Q-LICENSE, propose MIT, don't invent owner.
 - **D-006** No mirror deletion; `mirror: -`; no /MIR, no retention-bundle deletion, no --all bundles. Propose empty dedicated local mirror path for later approval.
+- **D-007** Reuse existing verified Q (D-004 'Q must not exist' was first-clone-only). P stays read-only. W1B-BASELINE before W2-DESIGN.
+- **D-008** Real Windows native stand required. Wrong-target clicks, missing item prerequisites and two unpaired WMI samples cannot close B-001..B-005. Old-exe history remains unproven.
+- **D-009** Permit locked project-local dependency fetch/build and existing gates under TASK limits. No versions/locks/product/native-config changes, release, installers or elevation.
+- **D-010** No gh account switch, global auth/config change, new token, broadened token scope, force/reset, --all history export, or destructive mirror. Auth failure reported, not bypassed.
+- **D-011** Execute unchanged BRO helper from an ignored project-local generic-system copy (`Q\.bro\tooling\bro-v3`), so automatic metrics cannot write to original SYS or public docs/prompt-system. No original system edits/pushes.
 </details>
 
 <details open><summary>§6 Owner prefs · P</summary>
@@ -48,6 +53,9 @@ React 19.3 · TS 5.9.3 · Motion 14 · Vite 8.3.2 · Tauri 2.12 · windows 0.62 
 - G-03 No installing stand packages / blanket Node+Electron install; blocked gates stay blocked.
 - G-04 No destructive `bro.ps1` mirror/retention (`/MIR`, bundle-delete) — D-006.
 - G-05 `bro finish OK` ≠ application PASS; the native defects are still open.
+- G-06 WMI reference != Rail sysinfo stream. Capture paired observations before assigning a cause.
+- G-07 Click actual '+' button, not native window center. Hidden->visible transition must start hidden.
+- G-08 Report/push/helper OK is metadata, not native functional PASS. Source commit, exe hash and final REPORT commit are separate identifiers.
 </details>
 
 <details open><summary>§8 Mockups · M → screen → file</summary>
@@ -70,4 +78,4 @@ None this wave (recon/publication). Mockups enter at W2-DESIGN per the roadmap.
 </details>
 
 ## §10 Roadmap
-`W0-BRIEF=done!:Бриф; W1-RECON=run:Разведка; W2-DESIGN=todo!:Макеты; W3b-CORE=todo:Логика; W3c-UI-RAIL=todo:Интерфейс; W4-FIX=todo:Регрессия; W5-POLISH=todo!:Релиз` · next: **W2-DESIGN**
+`W0-BRIEF=done!:Бриф; W1-RECON=done:Разведка PARTIAL; W1B-BASELINE=run:Сборка и реальный стенд; W2-DESIGN=todo!:Макеты; W3b-CORE=todo:Логика; W3c-UI-RAIL=todo:Интерфейс; W4-FIX=todo:Регрессия; W5-POLISH=todo!:Релиз` · next: **W1B-BASELINE**. B-001..B-005 remain open. Full functional acceptance requires native evidence; publication status alone is insufficient.

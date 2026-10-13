@@ -1,0 +1,9 @@
+﻿=== EXE PROVENANCE ===
+built_from_commit: f7f740d1002de624e8078c8ebdd34cdb5746a82d
+build_command: cargo build --manifest-path src-tauri/Cargo.toml --release --locked
+exe_path: src-tauri\target\release\rail.exe
+exe_sha256: 43a13486de178300e9c36a466471522ed2dba647a965004a663500e23db5a838
+exe_size: 4404224
+test_copy: .bro\exchange\W1B-BASELINE\run\rail-test.exe
+copy_sha256: 43a13486de178300e9c36a466471522ed2dba647a965004a663500e23db5a838
+equality: True

@@ -1,0 +1,23 @@
+﻿=== PROVENANCE W1B-BASELINE ===
+timestamp: 2026-10-13 21:59:43
+tested_source_commit: f7f740d1002de624e8078c8ebdd34cdb5746a82d
+git_status (product+other, excluding .bro):
+   M .bro/MAP.md
+   M .bro/STATUS.md
+   M .bro/metrics/SUMMARY.md
+   M .bro/state.js
+   M .gitignore
+  ?? .bro/LOG.md
+  ?? .bro/exchange/W1B-BASELINE/02-REPORT.md
+  ?? .bro/exchange/W1B-BASELINE/logs/
+  ?? .bro/exchange/W1B-BASELINE/proof/
+  ?? .bro/metrics/WAVES.csv
+  ?? .github/
+product_diff_vs_f4d2b98: none (clean)
+untracked: .github/workflows/build.yml (Q-005 CI present, not committed)
+=== P INVARIANCE (spot check: product tree hash) ===
+P:package.json vs Q:package.json -> MATCH
+P:package-lock.json vs Q:package-lock.json -> MATCH
+P:src-tauri/Cargo.toml vs Q:src-tauri/Cargo.toml -> MATCH
+P:src-tauri/Cargo.lock vs Q:src-tauri/Cargo.lock -> MATCH
+P:src-tauri/tauri.conf.json vs Q:src-tauri/tauri.conf.json -> MATCH

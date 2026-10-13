@@ -32,3 +32,7 @@ qa/shots/
 # OS junk
 Thumbs.db
 .DS_Store
+
+# BRO project-local tooling and wave run data (auto-metric writes; ignored per W1B-BASELINE)
+.bro/tooling/
+.bro/**/run/

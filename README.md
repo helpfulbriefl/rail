@@ -5,6 +5,8 @@
 > ## Статус
 > **Проект в активной разработке — НЕ «release‑ready» и НЕ все заявленные в старых документах исправления подтверждены.**
 > Реализован стек Tauri 2 + React (без Electron). Известные дефекты Owner'а (внешний drop, кнопка «+», флуктуация системных метрик, нестабильность hover) **задокументированы как открытые** в `.bro/exchange/W1-RECON/recon/09_project_questions.md`; доставляемый бинарник устарел относительно исходников этого репозитория (см. recon 09, Q-009). Не используйте как готовый продукт.
+>
+> **Сборка (волна W1B-BASELINE):** из закоммиченного `tested_source_commit = f7f740d…` собран source-built `rail.exe` (SHA-256 `43a13486…`, 4 404 224 B) строго по lock'ам; все гейты `npm ci / typecheck / lint:css / build / cargo build --release --locked` — EXIT 0; `qa/visual.mjs` — 23 сцены PASS. `qa/storyboard.mjs` падает на Windows (пре-существующий кросс-платформенный баг `URL.pathname`), как evidence, без правок. Нативные сценарии («+», edge-reveal, OLE-дрег, reorder) в этой волне **не автоматизированы** (в release нет a11y-дерева WebView2) — зафиксированы как unavailable + компактные manual-чек-листы в `.bro/exchange/W1B-BASELINE/proof/`.
 
 ## Как пользоваться
 
@@ -50,11 +52,12 @@ npm run qa            # всё выше + node qa/visual.mjs + node qa/storyboar
 
 `qa/` — визуальные/сториборд‑проверки webview‑окон × 4 темы (Playwright + mock‑бэкенд). **Нативные Win32‑пути (`win.rs`/`tracker.rs`) автоматическими тестами не покрыты.**
 
-## Известные дефекты (открытые, без ремонта в этом волне)
-- **B‑001** внешний drag/drop: механизм — `SetWindowRgn`‑клиппинг в `win.rs:308`; точный воспроизводящий вариант не установлен (Q‑008).
-- **B‑003** кнопка «+»: путь в исходниках корректен (`main.rs:419` callback‑`pick_files`); на старом бинарнике диалог не открывается (Q‑009).
-- **B‑004** системные метрики в футере — это **системный** счётчик (`tracker.rs:102` EMA α=0.25), он следует за OS, а не за процесс Rail.
-- Полная таблица и ответы — в `.bro/exchange/W1-RECON/recon/09_project_questions.md`.
+## Известные дефекты (открытые, без ремонта в этой волне)
+- **B‑001** внешний OLE drag/drop: механизм — `SetWindowRgn`‑клиппинг + `drag_until` в `win.rs:308`/`main.rs`; headless‑воспроизведение недоступно (нужна настоящая OLE‑сессия), зафиксирован компактный manual‑чек-лист (`W1B-BASELINE/proof/meter-trace.md` §5). Остаётся open.
+- **B‑003** кнопка «+»: путь в исходниках корректен (`main.rs:419` callback‑`pick_files`); в **source‑built** бинарнике release‑build не экспонирует a11y‑дерево WebView2, а auto‑hidden капсула имеет пустой region (`empty_hit_rect`), поэтому синтезированные клики — no‑op (4 попытки, все INVALID). Записано как **unavailable (automated)** + operator‑чек-лист (`W1B-BASELINE/proof/native-baseline.md` §2). Остаётся open.
+- **B‑004** системные метрики в футере — это **системный** счётчик (`tracker.rs:102` EMA α=0.25, dead-band 24 MB для RAM), следующий за OS, а не за процесс Rail. W1B получил независимый WMI/PerformanceCounter reference на 60 с (`run/meters-ref.csv`), но Rail‑серия IPC‑only и нечитается извне → **paired trace не завершён**, B‑004 остаётся open. Запрет на вывод "не утечка / исправлено" соблюдён.
+- **B‑005** held‑card / edge‑reveal: не подтверждены headless (diag‑лог в этом запуске не записан, region пуст). Operator‑чек-листы в `W1B-BASELINE/proof/meter-trace.md` §4/§6. Остаются open.
+- Полная таблица и ответы — в `.bro/exchange/W1-RECON/recon/09_project_questions.md` + errata `.bro/exchange/W1-RECON/04-ERRATA.md`.
 
 ## Лицензия
 **MIT (предложено по решению D‑005; одобрение Owner'а и текст `LICENSE` ещё не утверждены — Q‑LICENSE).**
