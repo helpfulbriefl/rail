@@ -1,10 +1,10 @@
 ---
-wave: W1B-BASELINE · ver: v3.0 · t_start: auto · t_report: auto
-commit: auto · tag: auto · push: auto · bundle: auto · pack: auto · exchange: auto
-tasks: auto · done: auto · gates_first: yes · repair: 0 · proof_ok: auto · proof_req: auto
-diff_files: auto · diff_add: auto · diff_del: auto · out_of_scope: auto · q: auto · contradictions: 2
+wave: W1B-BASELINE · ver: v3.0 · t_start: 2026-10-13 21:57 · t_report: 2026-10-13 23:07
+commit: 1798d05 · tag: w1b-baseline-done · push: ❌ · bundle: - · pack: - · exchange: -
+tasks: 6 · done: 6 · gates_first: yes · repair: 0 · proof_ok: 0 · proof_req: 6
+diff_files: 2 · diff_add: 12 · diff_del: 5 · out_of_scope: 0 · q: 2 · contradictions: 2
 K1: 1 · K2: 1 · K3: 1 · K4: 1 · k_why: - · friction_cd: #no-access
-cd_in: auto · cd_out: auto · prompt_weight: auto · an_in_prev: auto · an_out_prev: auto
+cd_in: 7624 · cd_out: 1981 · prompt_weight: 4515 · an_in_prev: 7215 · an_out_prev: 4850
 ---
 # REPORT W1B-BASELINE — source-built exe + valid native baseline, NO fixes
 
