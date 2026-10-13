@@ -1,5 +1,5 @@
 ---
-wave: W1-RECON · prev: - · t_issued: 2026-10-13
-task: .bro/exchange/W1-RECON/01-TASK.md · accept: -
+wave: W1B-BASELINE · prev: W1-RECON · t_issued: 2026-10-13 21:31
+task: .bro/exchange/W1B-BASELINE/01-TASK.md · accept: .bro/exchange/W1-RECON/03-ACCEPT.md
 ---
-First wave: BRO GO FIRST + TASK. Read TASK-specific safe-export overrides before running generic BRO git/mirror commands. Source remains untouched; no bug fixes. Report via .bro/exchange/W1-RECON/02-REPORT.md.
+BRO GO -> pull --ff-only -> read ACCEPT and TASK BEFORE generic helper actions -> execute unchanged helper from ignored project-local system copy -> begin -> apply LOG/MAP -> locked build and native baseline -> honest REPORT. No product fixes, global auth changes or original SYS writes. No init, mirror/retention or release.
