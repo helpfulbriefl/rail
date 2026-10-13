@@ -19,7 +19,7 @@ const server = createServer(async (req, res) => {
   if (!existsSync(f)) return res.writeHead(404).end();
   res.writeHead(200, { 'content-type': types[extname(f)] ?? 'application/octet-stream' });
   res.end(await readFile(f));
-}).listen(4173);
+}).listen(4173, '127.0.0.1');
 
 // Resolve a browser without `which` (it does not exist on Windows).
 const CANDIDATES = [
@@ -67,7 +67,7 @@ scenes.push({
 const failures = [];
 for (const sc of scenes) {
   const page = await browser.newPage({ viewport: { width: sc.size[0], height: sc.size[1] }, deviceScaleFactor: 2 });
-  await page.goto(`http://localhost:4173/?${sc.q}`);
+  await page.goto(`http://127.0.0.1:4173/?${sc.q}`);
   await page.addStyleTag({ content: WALL });
   await page.waitForTimeout(sc.wait ?? 1400);
   if (sc.hover !== undefined) {

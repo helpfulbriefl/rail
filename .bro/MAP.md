@@ -38,6 +38,10 @@ React 19.3 · TS 5.9.3 · Motion 14 · Vite 8.3.2 · Tauri 2.12 · windows 0.62 
 - **D-009** Permit locked project-local dependency fetch/build and existing gates under TASK limits. No versions/locks/product/native-config changes, release, installers or elevation.
 - **D-010** No gh account switch, global auth/config change, new token, broadened token scope, force/reset, --all history export, or destructive mirror. Auth failure reported, not bypassed.
 - **D-011** Execute unchanged BRO helper from an ignored project-local generic-system copy (`Q\.bro\tooling\bro-v3`), so automatic metrics cannot write to original SYS or public docs/prompt-system. No original system edits/pushes.
+- **D-012** W1C-NATIVE first establishes a visible live test-owned rail (correct HWND/PID, monitor/DPI/client coordinates, actual region type, non-empty DOM). Never classify a hidden-window click as a '+' test or a 'skip' as NULLREGION.
+- **D-013** Replaces D-002 ONLY for QA: allow exact Windows portability + loopback fixes in `qa/storyboard.mjs` and only localhost/bind changes in `qa/visual.mjs`. No product/native/frontend behavior, design, manifests, locks or dependencies change. Test-harness integration, not a UI redesign.
+- **D-014** Permit process-local WebView2 debug arguments with a verified loopback-only endpoint on a free port for an isolated test app. Observe its actual DOM via CDP, not mock. No Device Portal/Developer Mode/registry/firewall/browser-login changes, no public listener, no original-user profile, no product tap.
+- **D-015** Use existing owner credentials only per command (GCM manager + explicit helpfulbriefl URL + interactive false). No global gh/account/helper change. No new analyst remote commits while coder delivery is pending.
 </details>
 
 <details open><summary>§6 Owner prefs · P</summary>
@@ -56,6 +60,9 @@ React 19.3 · TS 5.9.3 · Motion 14 · Vite 8.3.2 · Tauri 2.12 · windows 0.62 
 - G-06 WMI reference != Rail sysinfo stream. Capture paired observations before assigning a cause.
 - G-07 Click actual '+' button, not native window center. Hidden->visible transition must start hidden.
 - G-08 Report/push/helper OK is metadata, not native functional PASS. Source commit, exe hash and final REPORT commit are separate identifiers.
+- G-09 INDEX proof fields require backticks and ✅; do not convert native-unavailable to PASS.
+- G-10 Show/verify live panel before controls. Validate window ownership; single-instance forwarding can invalidate fixture isolation. GetWindowRgn ERROR is not NULLREGION.
+- G-11 Existing browser mock QA != native WebView2/Windows OLE. Read actual DOM/errors before claiming instrumentation requires product changes.
 </details>
 
 <details open><summary>§8 Mockups · M → screen → file</summary>
@@ -78,4 +85,4 @@ None this wave (recon/publication). Mockups enter at W2-DESIGN per the roadmap.
 </details>
 
 ## §10 Roadmap
-`W0-BRIEF=done!:Бриф; W1-RECON=done:Разведка PARTIAL; W1B-BASELINE=run:Сборка и реальный стенд; W2-DESIGN=todo!:Макеты; W3b-CORE=todo:Логика; W3c-UI-RAIL=todo:Интерфейс; W4-FIX=todo:Регрессия; W5-POLISH=todo!:Релиз` · next: **W1B-BASELINE**. B-001..B-005 remain open. Full functional acceptance requires native evidence; publication status alone is insufficient.
+`W0-BRIEF=done!:Бриф; W1-RECON=done:Разведка PARTIAL; W1B-BASELINE=done:Сборка PARTIAL; W1C-NATIVE=run:Живая панель и стенд; W2-DESIGN=todo!:Макеты; W3b-CORE=todo:Логика; W3c-UI-RAIL=todo:Интерфейс; W4-FIX=todo:Регрессия; W5-POLISH=todo!:Релиз` · next: **W1C-NATIVE**. B-001..B-005 remain open. Native observed failures may complete reconnaissance, but no product defect is closed until an approved repair and real verification.

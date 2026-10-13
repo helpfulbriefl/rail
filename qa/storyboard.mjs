@@ -4,11 +4,12 @@ import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { existsSync, mkdirSync } from 'node:fs';
 import { extname, join } from 'node:path';
-import { execSync } from 'node:child_process';
 import sharp from 'sharp';
 
-const DIST = new URL('../dist/', import.meta.url).pathname;
-const OUT = new URL('./shots/', import.meta.url).pathname;
+// fileURLToPath: on Windows `URL.pathname` yields "/c:/..." which mkdir rejects.
+import { fileURLToPath } from 'node:url';
+const DIST = fileURLToPath(new URL('../dist/', import.meta.url));
+const OUT = fileURLToPath(new URL('./shots/', import.meta.url));
 mkdirSync(OUT, { recursive: true });
 const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.woff2': 'font/woff2', '.png': 'image/png' };
 const server = createServer(async (req, res) => {
@@ -17,13 +18,31 @@ const server = createServer(async (req, res) => {
   if (!existsSync(f)) return res.writeHead(404).end();
   res.writeHead(200, { 'content-type': types[extname(f)] ?? 'application/octet-stream' });
   res.end(await readFile(f));
-}).listen(4174);
-const browser = await chromium.launch({ executablePath: execSync('which chromium').toString().trim() });
+}).listen(4174, '127.0.0.1');
+
+// Resolve a browser without `which` (it does not exist on Windows).
+const CANDIDATES = [
+  process.env.CHROME,
+  process.env.CHROMIUM,
+  'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+  'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+  'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe',
+  '/usr/bin/chromium',
+  '/usr/bin/chromium-browser',
+  '/usr/bin/google-chrome',
+  '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+];
+const exe = CANDIDATES.find((p) => p && existsSync(p));
+if (!exe) {
+  console.error('No browser found; set CHROME=<path>');
+  process.exit(1);
+}
+const browser = await chromium.launch({ executablePath: exe });
 const WALL = 'html{background:linear-gradient(135deg,#1e3a8a 0%,#6d28d9 45%,#db2777 75%,#f59e0b 100%) !important}';
 
 async function strip(name, q, size, act, times, clip) {
   const page = await browser.newPage({ viewport: { width: size[0], height: size[1] }, deviceScaleFactor: 2 });
-  await page.goto(`http://localhost:4174/?${q}`);
+  await page.goto(`http://127.0.0.1:4174/?${q}`);
   await page.addStyleTag({ content: WALL });
   const frames = [];
   const t0 = await act(page);
@@ -38,7 +57,7 @@ async function strip(name, q, size, act, times, clip) {
   await sharp({ create: { width: W, height: H * frames.length + gap * (frames.length - 1), channels: 4, background: '#ffffff00' } })
     .composite(frames.map((f, i) => ({ input: f, left: 0, top: i * (H + gap) })))
     .png()
-    .toFile(`${OUT}${name}.png`);
+    .toFile(join(OUT, `${name}.png`));
   console.log('saved', name);
 }
 

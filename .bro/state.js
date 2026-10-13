@@ -2,17 +2,17 @@ window.BRO_STATE = {
     "project":  "rail-publish",
     "ver":  "v3.0",
     "mode":  "JOIN",
-    "updated":  "2026-10-13 23:07",
-    "wave":  "W1B-BASELINE",
-    "current":  "Сборка и реальный стенд",
-    "turn":  "analyst",
-    "turn_text":  "🧠 аналитик",
-    "todo":  "напиши аналитику: BRO CHECK",
+    "updated":  "2026-10-13 23:48",
+    "wave":  "W1C-NATIVE",
+    "current":  "Живая панель и стенд",
+    "turn":  "coder",
+    "turn_text":  "🤖 кодер",
+    "todo":  "ничего — ждём «Готово» от кодера",
     "next_stop":  "🛑 Макеты через 1 шаг.",
-    "done":  2,
-    "total":  8,
-    "pct":  25,
-    "bar":  "▰▰▱▱▱▱▱▱",
+    "done":  3,
+    "total":  9,
+    "pct":  33,
+    "bar":  "▰▰▰▱▱▱▱▱",
     "road":  [
                  {
                      "id":  "W0-BRIEF",
@@ -28,7 +28,13 @@ window.BRO_STATE = {
                  },
                  {
                      "id":  "W1B-BASELINE",
-                     "title":  "Сборка и реальный стенд",
+                     "title":  "Сборка PARTIAL",
+                     "status":  "done",
+                     "stop":  false
+                 },
+                 {
+                     "id":  "W1C-NATIVE",
+                     "title":  "Живая панель и стенд",
                      "status":  "run",
                      "stop":  false
                  },
@@ -64,14 +70,14 @@ window.BRO_STATE = {
                  }
              ],
     "metrics":  {
-                    "waves":  1,
-                    "first_pass":  "0/1",
+                    "waves":  2,
+                    "first_pass":  "0/2",
                     "false_done":  0,
-                    "minutes":  8,
-                    "wait":  "-",
-                    "ptok_task":  3252,
-                    "gh":  12,
-                    "k":  3,
+                    "minutes":  70,
+                    "wait":  47,
+                    "ptok_task":  3156,
+                    "gh":  8.5,
+                    "k":  3.5,
                     "o":  1
                 },
     "waves":  [
@@ -83,6 +89,15 @@ window.BRO_STATE = {
                       "done":  "6",
                       "defects":  "5",
                       "gh":  "12"
+                  },
+                  {
+                      "wave":  "W1B-BASELINE",
+                      "verdict":  "PARTIAL",
+                      "minutes":  70,
+                      "tasks":  "6",
+                      "done":  "6",
+                      "defects":  "4",
+                      "gh":  "5"
                   }
               ]
 };

@@ -1,0 +1,29 @@
+=== W1C-NATIVE · PROVENANCE ===
+wave: W1C-NATIVE
+base_commit(W1C start): f1e8a4d
+tested_source_commit: f7f740d1002de624e8078c8ebdd34cdb5746a82d
+delivery_commit: f1e8a4d (base, reused)
+reuse_exe: yes  (no cargo rebuild this wave)
+exe_sha256: 43a13486de178300e9c36a466471522ed2dba647a965004a663500e23db5a838
+exe_size_bytes: 4404224
+exe_provenance_ref: ../W1B-BASELINE/logs/exe-provenance.log
+test_copy: .bro/exchange/W1C-NATIVE/run/rail-test.exe
+root_cause_T1: config written with UTF-8 BOM by Set-Content -Encoding UTF8 -> rail.config.json
+               rejected at parse; fixed via [IO.File]::WriteAllText(...,UTF8Encoding($false)) (BOM-free)
+pinned_flip_question: earlier fixture 5984 observed settings.pinned -> false on a save path;
+               held as open question, not asserted (no product edit)
+b_open: B-001..B-005 remain open
+gates(this wave): typecheck EXIT 0 (3s) · lint:css EXIT 0 (1.6s) · qa EXIT 0 (80s) [run/exits.txt]
+                   (visual 23/23 PASS, storyboard leg green after §4 fix)
+interaction_labeling:
+  '+' physical hit-test: 1 real Windows trial (t3-plus-trial-1.json, DETECTED_CANCELLED, dialog 0x49F12C6 pid=70288)
+  '+' invoke-path: CDP DOM click (t3-plus-cdp-*, cdp-plus-reveal.mjs) — DIAGNOSTIC only, not physical hit-test
+  reorder + restart-persist: CDP Tauri IPC invoke('reorder') -> config persisted=true;
+                   restart kept reversed order (t3-reorder-t1.json, t3-reorder-restart-47828.json kept=true)
+  held-hover: physical SetCursorPos hold on tile -> .hold-ring @0.4s, magnify 1.4x, card transitions
+                   recorded (t3-hold-hover-t5.json). Flyout leg recorded via proxy (body length), NOT confirmed mount.
+  OLE shell drag: NOT executable by automation -> exact limitation + manual checklist (t3-ole-limitation.md)
+t4_meters: 60s .rail-foot CDP series (t4-foot-series.json, 30 finite samples CPU 27-72% RAM 89-98%)
+           + independent WMI reference (t4-ref-meters.json, 20 samples RAM 94.7-98.9%);
+           CPU ref reports 0% in this VM (Win32_Processor.LoadPercentage/PerfFormattedData artifact) ->
+           CPU pairing degraded, RAM pairing valid; no "not a leak" inference (B-004 open)
