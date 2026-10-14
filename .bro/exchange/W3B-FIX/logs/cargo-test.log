@@ -1,0 +1,38 @@
+   Compiling rail v1.0.0 (C:\Users\BazaCode\Desktop\cody-proj\win-utils\rail-publish\src-tauri)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 10.57s
+     Running unittests src\main.rs (src-tauri\target\debug\deps\rail-ad23f6f483190b98.exe)
+
+running 30 tests
+test config::tests::bom_prefixed_json_still_loads ... ok
+test config::tests::broken_json_falls_back_to_defaults ... ok
+test core::tests::change_then_immediate_flush_persists_it ... ok
+test config::tests::every_approved_theme_survives_sanitize ... ok
+test config::tests::v1_migration_maps_oversized_defaults ... ok
+test config::tests::v2_config_is_not_remigrated ... ok
+test config::tests::sanitize_rejects_unknown_theme_and_clamps_delays ... ok
+test core::tests::failed_write_stays_dirty_and_records_a_content_free_error ... ok
+test core::tests::file_name_splits_on_both_separators ... ok
+test core::tests::norm_path_folds_case_separators_and_verbatim_prefix ... ok
+test core::tests::norm_path_keeps_distinct_directories_distinct ... ok
+test core::tests::revision_guard_skips_a_stale_snapshot ... ok
+test tests::drag_pad_grows_with_scale ... ok
+test tests::duplicate_only_drop_changes_nothing ... ok
+test tests::flyout_fits_inside_the_work_area_on_every_side ... ok
+test tests::mixed_drop_only_plans_the_new_paths ... ok
+test tests::oversized_flyout_is_clamped_in_size_and_never_panics ... ok
+test tests::rail_cross_is_derived_from_scale_not_hard_coded ... ok
+test tests::same_basename_different_directory_is_not_a_duplicate ... ok
+test tracker::tests::cpu_ranking_includes_a_cpu_heavy_low_ram_app ... ok
+test tracker::tests::protected_policy_is_identity_based_not_a_substring ... ok
+test tracker::tests::ram_ranking_is_system_wide_not_a_reorder_of_five ... ok
+test tracker::tests::same_basename_different_directory_stays_two_rows ... ok
+test tracker::tests::ties_are_deterministic ... ok
+test tracker::tests::snapshot_is_bounded_and_deduplicated ... ok
+test config::tests::settings_and_order_round_trip ... ok
+test config::tests::initial_save_creates_valid_utf8_without_bom ... ok
+test config::tests::failed_replace_preserves_the_previous_valid_config ... ok
+test config::tests::repeated_replacement_of_existing_file_keeps_working ... ok
+test core::tests::concurrent_scheduled_save_and_flush_never_write_a_stale_snapshot ... ok
+
+test result: ok. 30 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.35s
+

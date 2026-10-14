@@ -1,29 +1,17 @@
 # Статус · rail-publish · BRO v3.0
-Обновлено 2026-10-14 03:03 · режим JOIN · волна W1C-NATIVE
+Обновлено 2026-10-14 22:19 · режим JOIN · волна W3B-FIX
 
-▰▰▰▱▱▱▱▱ **3 из 9 · 33 %** · сейчас «Живая панель и стенд» · ход за 🧠 аналитик
+▰▰▰▰▰▱▱▱ **2 из 3 · 67 %** · сейчас «W3B-FIX» · ход за 🧠 аналитик
 
-**Тебе:** напиши аналитику: BRO CHECK · **Дальше:** 🛑 Макеты через 1 шаг.
+**Тебе:** напиши аналитику: BRO CHECK · **Дальше:** остановок больше нет
 
 ```mermaid
 flowchart LR
-  n0["✅ Бриф 🛑"]:::done
-  n1["✅ Разведка PARTIAL"]:::done
+  n0["✅ W1-RECON"]:::done
+  n1["✅ W1B-BASELINE"]:::done
   n0 --> n1
-  n2["✅ Сборка PARTIAL"]:::done
+  n2["▶ W3B-FIX"]:::run
   n1 --> n2
-  n3["▶ Живая панель и стенд"]:::run
-  n2 --> n3
-  n4["○ Макеты 🛑"]:::todo
-  n3 --> n4
-  n5["○ Логика"]:::todo
-  n4 --> n5
-  n6["○ Интерфейс"]:::todo
-  n5 --> n6
-  n7["○ Регрессия"]:::todo
-  n6 --> n7
-  n8["○ Релиз 🛑"]:::todo
-  n7 --> n8
   classDef done fill:#DCFCE7,stroke:#16A34A,color:#16181D
   classDef run fill:#E0E7FF,stroke:#4F46E5,color:#16181D
   classDef wait fill:#FEF3C7,stroke:#D97706,color:#16181D

@@ -1,0 +1,9 @@
+exe=C:\Users\BazaCode\Desktop\cody-proj\win-utils\rail-publish\src-tauri\target\release\rail.exe
+sha256=3BF7E2505694FC54CF52F06A84BCBF85F94E4DAB53EB5FD2E599FDBFA8E0EEB5
+bytes=4441088
+pre_running=0
+post_count=1
+PID=47256 PATH=C:\Users\BazaCode\Desktop\cody-proj\win-utils\rail-publish\src-tauri\target\release\rail.exe START=2026-10-14T22:08:00.5095636+03:00 WS_MB=28.5
+path_match=1
+SINGLE_INSTANCE_PATH_OK
+after_kill=0

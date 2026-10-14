@@ -1,0 +1,79 @@
+
+> rail@1.0.0 qa
+> npm run typecheck && npm run lint:css && vite build && node qa/visual.mjs && node qa/storyboard.mjs
+
+
+> rail@1.0.0 typecheck
+> tsc -p .
+
+
+> rail@1.0.0 lint:css
+> stylelint "src/**/*.css"
+
+[36mvite v8.3.2 [32mbuilding client environment for production...[36m[39m
+transforming...
+✓ 2330 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                                                   0.38 kB │ gzip:   0.26 kB
+dist/assets/geist-mono-symbols2-wght-normal-CO5SzqOn.woff2        5.81 kB
+dist/assets/geist-mono-cyrillic-ext-wght-normal-X_5orZeX.woff2    6.17 kB
+dist/assets/geist-cyrillic-ext-wght-normal-DjL33-gN.woff2         7.42 kB
+dist/assets/geist-mono-vietnamese-wght-normal-DadHysG0.woff2      7.69 kB
+dist/assets/geist-vietnamese-wght-normal-6IgcOCM7.woff2           8.00 kB
+dist/assets/geist-mono-cyrillic-wght-normal-DiZS0aHC.woff2       12.94 kB
+dist/assets/geist-mono-latin-ext-wght-normal-Bwz-egvJ.woff2      14.69 kB
+dist/assets/geist-cyrillic-wght-normal-BEAKL7Jp.woff2            15.08 kB
+dist/assets/geist-latin-ext-wght-normal-DC-KSUi6.woff2           16.51 kB
+dist/assets/geist-mono-latin-wght-normal-XN7g48iV.woff2          23.12 kB
+dist/assets/geist-latin-wght-normal-BgDaEnEv.woff2               29.40 kB
+dist/assets/index-CRrxYEGs.css                                   23.86 kB │ gzip:   5.47 kB
+dist/assets/core-BrXq0wPV.js                                      1.12 kB │ gzip:   0.55 kB
+dist/assets/event-S6jrA9g6.js                                     1.37 kB │ gzip:   0.65 kB
+dist/assets/webviewWindow-1w45_XVK.js                            17.71 kB │ gzip:   3.71 kB
+dist/assets/index-DxwELI6X.js                                   416.87 kB │ gzip: 134.39 kB
+
+[32m✓ built in 699ms[39m
+source 8451abb · 38 scenes
+PASS  rail-right-classic-light
+PASS  flyout-metrics-classic-light
+PASS  flyout-info-classic-light
+PASS  settings-classic-light
+PASS  rail-right-classic-dark
+PASS  flyout-metrics-classic-dark
+PASS  flyout-info-classic-dark
+PASS  settings-classic-dark
+PASS  rail-right-porcelain
+PASS  flyout-metrics-porcelain
+PASS  flyout-info-porcelain
+PASS  settings-porcelain
+PASS  rail-right-aurora
+PASS  flyout-metrics-aurora
+PASS  flyout-info-aurora
+PASS  settings-aurora
+PASS  rail-right-glass
+PASS  flyout-metrics-glass
+PASS  flyout-info-glass
+PASS  settings-glass
+PASS  rail-right-studio
+PASS  flyout-metrics-studio
+PASS  flyout-info-studio
+PASS  settings-studio
+PASS  rail-bottom-aurora
+PASS  rail-bottom-classic-dark
+PASS  rail-empty-porcelain
+PASS  rail-left-classic-light-L
+PASS  rail-mini-aurora
+PASS  rail-no-meters-porcelain
+PASS  rail-crowd-studio
+PASS  rail-drop-aurora
+PASS  flyout-sys-aurora
+PASS  flyout-sys-empty-porcelain
+PASS  flyout-sys-stale-glass
+PASS  flyout-sys-refused-studio
+PASS  rail-savefail-aurora
+PASS  negative-broken-layout  out-of-window: .rail-bg 976,158,1022,542  (negative fixture)
+
+ALL PASS (38 scenes, source 8451abb)
+saved story-appear
+saved story-launch

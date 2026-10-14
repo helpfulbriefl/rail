@@ -2,71 +2,35 @@ window.BRO_STATE = {
     "project":  "rail-publish",
     "ver":  "v3.0",
     "mode":  "JOIN",
-    "updated":  "2026-10-14 03:03",
-    "wave":  "W1C-NATIVE",
-    "current":  "Живая панель и стенд",
+    "updated":  "2026-10-14 22:19",
+    "wave":  "W3B-FIX",
+    "current":  "W3B-FIX",
     "turn":  "analyst",
     "turn_text":  "🧠 аналитик",
     "todo":  "напиши аналитику: BRO CHECK",
-    "next_stop":  "🛑 Макеты через 1 шаг.",
-    "done":  3,
-    "total":  9,
-    "pct":  33,
-    "bar":  "▰▰▰▱▱▱▱▱",
+    "next_stop":  "остановок больше нет",
+    "done":  2,
+    "total":  3,
+    "pct":  67,
+    "bar":  "▰▰▰▰▰▱▱▱",
     "road":  [
                  {
-                     "id":  "W0-BRIEF",
-                     "title":  "Бриф",
-                     "status":  "done",
-                     "stop":  true
-                 },
-                 {
                      "id":  "W1-RECON",
-                     "title":  "Разведка PARTIAL",
+                     "title":  "W1-RECON",
                      "status":  "done",
                      "stop":  false
                  },
                  {
                      "id":  "W1B-BASELINE",
-                     "title":  "Сборка PARTIAL",
+                     "title":  "W1B-BASELINE",
                      "status":  "done",
                      "stop":  false
                  },
                  {
-                     "id":  "W1C-NATIVE",
-                     "title":  "Живая панель и стенд",
+                     "id":  "W3B-FIX",
+                     "title":  "W3B-FIX",
                      "status":  "run",
                      "stop":  false
-                 },
-                 {
-                     "id":  "W2-DESIGN",
-                     "title":  "Макеты",
-                     "status":  "todo",
-                     "stop":  true
-                 },
-                 {
-                     "id":  "W3b-CORE",
-                     "title":  "Логика",
-                     "status":  "todo",
-                     "stop":  false
-                 },
-                 {
-                     "id":  "W3c-UI-RAIL",
-                     "title":  "Интерфейс",
-                     "status":  "todo",
-                     "stop":  false
-                 },
-                 {
-                     "id":  "W4-FIX",
-                     "title":  "Регрессия",
-                     "status":  "todo",
-                     "stop":  false
-                 },
-                 {
-                     "id":  "W5-POLISH",
-                     "title":  "Релиз",
-                     "status":  "todo",
-                     "stop":  true
                  }
              ],
     "metrics":  {

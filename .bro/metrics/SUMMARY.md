@@ -1,4 +1,4 @@
-# SUMMARY rail-publish · updated 2026-10-13 23:48 · by tools/bro.ps1 summary
+# SUMMARY rail-publish · updated 2026-10-14 22:06 · by tools/bro.ps1 summary
 | # | indicator | good if | v3.0 |
 |---|---|---|---|
 | 0 | waves (verdict needs >=10) | >=10 | 2 |
