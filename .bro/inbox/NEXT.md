@@ -1,5 +1,5 @@
 ---
 wave: W3C-CLOSEOUT · prev: W3B-FIX
-task: .bro/exchange/W3C-CLOSEOUT/01-TASK.md · accept: .bro/exchange/W3B-FIX/03-ACCEPT.md
+task: .bro/exchange/W3C-CLOSEOUT/01-TASK.md · continuation: .bro/exchange/W3C-CLOSEOUT/04-MINIMAL-CONTINUATION.md · accept: .bro/exchange/W3C-CLOSEOUT/03-ACCEPT.md
 ---
-W3B accepted as significant PARTIAL progress, not complete native PASS. Execute minimal timestamp/empty-open/live-five-row/interaction-freeze/temp-cleanup corrections and native closeout. Record historical workflow out-of-scope honestly; no history rewrite/.github edits. Keep accepted themes/GCM/working OLE, no new design/recon. Four evidence rows; do not mark native-unavailable checks PASS. Read latest analyst docs after safe ff-only synchronization; preserve Owner data/P/earlier reports/index/tags. Deliver rebuilt EXE provenance and one consolidated Owner checklist only where physical native checks truly need assistance.
+W3C source/report published at c23b31c and accepted PARTIAL. Minimal same-wave continuation: prevent empty freeze under hover/focus, coordinate pointer/focus/press release, preserve tombstones when all apps vanish, show loading totals placeholders; sequence QA plus rebuilt EXE handoff. No new broad audit/design/security changes. Original reports/index/tags immutable, .github untouched. Keep native physical checks PARTIAL pending one consolidated checkoff on exact new binary; no mock/smoke substitute. Same GCM and safe synchronization. Do not repeat already-accepted repairs.
