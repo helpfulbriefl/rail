@@ -199,7 +199,7 @@ function SysMonitor() {
               // tombstone: the app exited while the user was interacting —
               // the slot stays put (disabled) instead of shifting neighbours
               return (
-                <div key={id} className="sysmon-row" data-gone="" data-closing={st ? '' : undefined}>
+                <div key={id} className="sysmon-row" data-gone="" data-closing={st ? '' : undefined} style={{ opacity: 0.45 }}>
                   <span className="sysmon-icon">—</span>
                   <div className="sysmon-info">
                     <span className="sysmon-name">приложение закрыто</span>

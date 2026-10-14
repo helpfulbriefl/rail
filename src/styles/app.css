@@ -1280,10 +1280,6 @@ img {
   opacity: 0.75;
 }
 
-.sysmon-row[data-gone] {
-  opacity: 0.45;
-}
-
 .sysmon-stale {
   padding: 2px var(--s-2);
   color: var(--muted);
