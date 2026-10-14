@@ -99,13 +99,30 @@ export function mock(): Api {
     // `cold=1` emits two empty frames first: a popup opened before the first
     // sample must render the first arriving rows without a tab switch
     const cold = q.get('cold') === '1';
-    const sysTop = q.get('sysmon') === 'empty' || (cold && t <= 2) ? [] : sysTopAll;
+    // Event-sequence fixtures for the interaction regression QA (qa/visual.mjs).
+    // Each is OFF unless its query flag is set, so every pre-existing scene is
+    // unchanged; they let a real Playwright event sequence drive a genuine
+    // disappearance / new-leader / all-vanish / never-sampled transition.
+    const nosample = q.get('nosample') === '1';
+    const vanish = q.get('vanish') === '1';
+    const vanishall = q.get('vanishall') === '1';
+    const shift = q.get('shift') === '1';
+    let sysTop: SysApp[] = q.get('sysmon') === 'empty' || (cold && t <= 2) ? [] : sysTopAll;
+    if (vanish && t >= 4) sysTop = sysTopAll.filter((a) => a.name !== 'code.exe');
+    if (vanishall && t >= 4) sysTop = [];
+    if (shift && t >= 4) {
+      const leader: SysApp = { id: 'c:\\tools\\miner\\miner.exe', name: 'miner.exe', cpu: 97.5, mem: 500e6, pid: 9900, procs: [{ pid: 9900, startTime: Math.floor(Date.now() / 1000) - 10 }], windows: 0, closable: true };
+      sysTop = [leader, ...sysTopAll.filter((a) => a.name !== 'explorer.exe')];
+    }
     // `ts` is unix MILLISECONDS — the same unit the backend emits
     // (`config::now`). `stale=1` freezes the stamp 60 s in the past:
     // carry-forward frames keep flowing but must be marked stale. `recent=1`
     // keeps the sample just under the 6 s threshold: must NOT be stale.
-    const ts = q.get('stale') === '1' ? Date.now() - 60_000 : q.get('recent') === '1' ? Date.now() - 4_000 : Date.now();
-    return { items: out, sys: { cpu: 18 + Math.sin(t / 3) * 6, memUsed: 11.2e9, memTotal: 31.9e9 }, sysTop, ts, seq: t };
+    // `nosample=1` reports a never-sampled frame (ts 0): loading placeholders,
+    // never fabricated zero totals.
+    const ts = nosample ? 0 : q.get('stale') === '1' ? Date.now() - 60_000 : q.get('recent') === '1' ? Date.now() - 4_000 : Date.now();
+    const sys = nosample ? { cpu: 0, memUsed: 0, memTotal: 0 } : { cpu: 18 + Math.sin(t / 3) * 6, memUsed: 11.2e9, memTotal: 31.9e9 };
+    return { items: out, sys, sysTop, ts, seq: t };
   };
   if (typeof window !== 'undefined') {
     setInterval(() => emit('runtime', rt()), 1000);

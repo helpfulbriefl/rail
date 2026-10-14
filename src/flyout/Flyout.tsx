@@ -75,6 +75,12 @@ export function Flyout() {
  * slots and the X under the cursor never shift. The close request captures
  * the row identity (full path + PID/start-time set) at the press boundary;
  * the backend revalidates it before any WM_CLOSE.
+ *
+ * Pointer, focus and press each hold the freeze **independently**: leaving one
+ * zone while another still aims (or tabbing between rows) never drops the
+ * snapshot on its own. The freeze never latches an empty frame — rows arriving
+ * while the pointer is already inside render without a tab switch — and the
+ * totals render as placeholders until the first real sample arrives.
  */
 const STALE_MS = 6000;
 
@@ -88,9 +94,14 @@ function SysMonitor() {
   const [frozenIds, setFrozenIds] = useState<string[] | null>(null);
   // identity captured at the press/focus boundary of the X button
   const capture = useRef<{ id: string; procs: SysApp['procs'] } | null>(null);
-  // whether the pointer is inside the list: a press that ends inside keeps
-  // the freeze (the user is still aiming), one that ends outside releases it
-  const inside = useRef(false);
+  // Independent interaction guards. Each zone — pointer, focus, press — owns
+  // the freeze on its own; it is held while ANY of them is active, so a
+  // pointer-leave while the keyboard still holds focus, or a blur that is
+  // really an internal Tab to a sibling, never drops the snapshot on its own.
+  const pointerIn = useRef(false);
+  const focusIn = useRef(false);
+  const press = useRef(false);
+  const anyGuard = () => pointerIn.current || focusIn.current || press.current;
   // ticking clock: staleness must flip while events have stopped, without
   // waiting for the next frame to rerender the popup
   const [, setTick] = useState(0);
@@ -109,21 +120,41 @@ function SysMonitor() {
     return sorted.slice(0, 5).map((a) => a.id);
   }, [apps, tab]);
   const ids = frozenIds ?? liveIds;
+  // latest live ranking, readable from event handlers without stale closures
+  const liveIdsRef = useRef<string[]>([]);
+  liveIdsRef.current = liveIds;
 
   const noSample = rt.ts <= 0;
   const stale = !noSample && Date.now() - rt.ts > STALE_MS;
 
-  // interaction-scoped freeze: `arm` snapshots the current top-five once,
-  // `release` resumes live ranking. Released by pointer-leave, focus-leave
-  // or a press that ends outside the list — never latched for the popup.
-  const arm = () => setFrozenIds((cur) => cur ?? liveIds);
-  const release = () => setFrozenIds(null);
+  // interaction-scoped freeze: `arm` snapshots the current top-five the first
+  // time a guard becomes active — but only when there are real rows to freeze,
+  // so an empty loading frame can never latch `[]`. `release` resumes live
+  // ranking only once every guard has ended.
+  const arm = () => {
+    if (!frozenIds && liveIdsRef.current.length) setFrozenIds(liveIdsRef.current);
+  };
+  const release = () => {
+    if (!anyGuard()) setFrozenIds(null);
+  };
+  // rows that arrive while a guard is already held must stabilise (the user is
+  // still aiming), but the empty frame before them must never be frozen.
+  useEffect(() => {
+    if (anyGuard() && !frozenIds && liveIds.length) setFrozenIds(liveIds);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [liveIds, frozenIds]);
   useEffect(() => {
     const up = () => {
-      if (!inside.current) setFrozenIds(null);
+      press.current = false;
+      release();
     };
     window.addEventListener('pointerup', up);
-    return () => window.removeEventListener('pointerup', up);
+    window.addEventListener('pointercancel', up);
+    return () => {
+      window.removeEventListener('pointerup', up);
+      window.removeEventListener('pointercancel', up);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const doClose = (app: SysApp) => {
@@ -176,20 +207,36 @@ function SysMonitor() {
       <div
         className="sysmon-body"
         onPointerEnter={() => {
-          inside.current = true;
+          pointerIn.current = true;
           arm();
         }}
         onPointerLeave={() => {
-          inside.current = false;
+          pointerIn.current = false;
           release();
         }}
-        onPointerDown={arm}
-        onFocus={arm}
-        onBlur={release}
+        onPointerDown={() => {
+          press.current = true;
+          arm();
+        }}
+        onFocus={(e) => {
+          // React's onFocus bubbles (focusin): it also fires when focus moves
+          // between descendants. Only an entry from outside counts as focus-in.
+          if (!e.currentTarget.contains(e.relatedTarget as Node | null)) focusIn.current = true;
+          arm();
+        }}
+        onBlur={(e) => {
+          // Blur bubbles too: focus moving to a sibling inside the list keeps
+          // the freeze; only a focus that actually leaves the list releases it.
+          if (!e.currentTarget.contains(e.relatedTarget as Node | null)) focusIn.current = false;
+          release();
+        }}
       >
         {noSample ? (
           <div className="sysmon-empty">Ожидание первых данных…</div>
-        ) : apps.length === 0 ? (
+        ) : ids.length === 0 ? (
+          // only truly empty when there is no frozen snapshot either: while a
+          // guard is held the frozen slots (tombstones) stay put even if every
+          // current candidate has disappeared
           <div className="sysmon-empty">Нет данных</div>
         ) : (
           ids.map((id) => {
@@ -274,9 +321,15 @@ function SysMonitor() {
       </div>
       <div className="sysmon-foot">
         <span className="sysmon-tot">
-          CPU {sys.cpu.toFixed(0)}% · RAM {bytes(sys.memUsed).v}
-          {bytes(sys.memUsed).u} / {bytes(sys.memTotal).v}
-          {bytes(sys.memTotal).u}
+          {noSample ? (
+            <>CPU — · RAM — / —</>
+          ) : (
+            <>
+              CPU {sys.cpu.toFixed(0)}% · RAM {bytes(sys.memUsed).v}
+              {bytes(sys.memUsed).u} / {bytes(sys.memTotal).v}
+              {bytes(sys.memTotal).u}
+            </>
+          )}
         </span>
         <span className="sysmon-charts" aria-hidden>
           <Sparkline data={sysHist.cpu} max={100} w={64} h={16} />

@@ -90,6 +90,15 @@ scenes.push({ name: 'flyout-sys-cpu-crowd-studio', q: 'w=flyout&kind=sys&id=sys&
 scenes.push({ name: 'flyout-sys-cold-porcelain', q: 'w=flyout&kind=sys&id=sys&theme=porcelain&cold=1', size: [330, 380], wait: 3200 });
 // sample younger than the staleness threshold: must NOT be marked stale
 scenes.push({ name: 'flyout-sys-recent-glass', q: 'w=flyout&kind=sys&id=sys&theme=glass&recent=1', size: [330, 380], wait: 2600, noSelector: '.sysmon-stale' });
+// interaction-freeze event sequences — behavioural regression, not pixels.
+// Each drives a real pointer/focus/keyboard sequence against a scripted mock
+// fixture and asserts the freeze edge case a screenshot cannot observe.
+scenes.push({ name: 'seq-hover-cold-porcelain', q: 'w=flyout&kind=sys&id=sys&theme=porcelain&cold=1', size: [330, 380], wait: 150, seq: 'hover-cold' });
+scenes.push({ name: 'seq-leave-focus-glass', q: 'w=flyout&kind=sys&id=sys&theme=glass&vanish=1', size: [330, 380], wait: 150, seq: 'leave-focus' });
+scenes.push({ name: 'seq-tab-focus-studio', q: 'w=flyout&kind=sys&id=sys&theme=studio&vanish=1', size: [330, 380], wait: 150, seq: 'tab-focus' });
+scenes.push({ name: 'seq-all-vanish-aurora', q: 'w=flyout&kind=sys&id=sys&theme=aurora&vanishall=1', size: [330, 380], wait: 150, seq: 'all-vanish' });
+scenes.push({ name: 'seq-loading-totals-glass', q: 'w=flyout&kind=sys&id=sys&theme=glass&nosample=1', size: [330, 380], wait: 150, seq: 'loading-totals' });
+scenes.push({ name: 'seq-new-leader-porcelain', q: 'w=flyout&kind=sys&id=sys&theme=porcelain&shift=1', size: [330, 380], wait: 150, seq: 'new-leader' });
 // persistence failure must surface in the UI
 scenes.push({ name: 'rail-savefail-aurora', q: 'w=rail&theme=aurora&savefail=1', size: [130, 700], needSelector: '.save-warn' });
 // negative fixture: a deliberately broken layout that QA MUST catch
@@ -110,9 +119,77 @@ const sha = (() => {
 })();
 console.log(`source ${sha} · ${scenes.length} scenes`);
 
+// Event-sequence regression harness: drives real Playwright pointer/focus/
+// keyboard sequences against the scripted mock fixtures and asserts the
+// interaction-freeze behaviour. These are behavioural assertions, not pixels —
+// they catch the freeze edge cases a screenshot cannot see.
+async function runSeq(page, name, issues) {
+  const bodyCenter = async () => {
+    const b = await page.$('.sysmon-body');
+    if (!b) return null;
+    const r = await b.boundingBox();
+    return r ? { x: r.x + r.width / 2, y: r.y + r.height / 2 } : null;
+  };
+  if (name === 'hover-cold') {
+    // pointer already inside before the first sample: rows must still arrive
+    await page.waitForSelector('.sysmon-body');
+    const c = await bodyCenter();
+    if (c) await page.mouse.move(c.x, c.y, { steps: 4 });
+    await page.waitForTimeout(2800);
+    const rows = await page.$$eval('.sysmon-row', (e) => e.length);
+    if (rows < 1) issues.push('hover-cold: no rows appeared while the pointer was already inside (empty frame latched the freeze)');
+  } else if (name === 'leave-focus') {
+    // pointer enters (arm) then leaves while keyboard focus keeps its guard
+    await page.waitForSelector('.sysmon-row .sysmon-close:not([disabled])');
+    const c = await bodyCenter();
+    if (c) await page.mouse.move(c.x, c.y, { steps: 4 });
+    await page.focus('.sysmon-row .sysmon-close:not([disabled])');
+    await page.mouse.move(2, 2, { steps: 3 });
+    await page.waitForTimeout(3400);
+    const gone = await page.$$eval('.sysmon-row[data-gone]', (e) => e.length);
+    if (gone < 1) issues.push('leave-focus: freeze dropped when the pointer left while focus remained (disappeared app vanished instead of a tombstone)');
+  } else if (name === 'tab-focus') {
+    // internal Tab transitions between rows must not be read as a focus-leave.
+    // Tab lands on a row that survives the disappearance (the vanished app is
+    // a different slot), so the focused node is not unmounted by the rank
+    // update and the freeze can only persist if internal blurs are ignored.
+    await page.waitForSelector('.sysmon-row .sysmon-close:not([disabled])');
+    await page.focus('.sysmon-row .sysmon-close:not([disabled])');
+    await page.keyboard.press('Tab');
+    await page.keyboard.press('Tab');
+    await page.waitForTimeout(3400);
+    const gone = await page.$$eval('.sysmon-row[data-gone]', (e) => e.length);
+    if (gone < 1) issues.push('tab-focus: an internal Tab between rows released the freeze (disappeared app vanished instead of a tombstone)');
+  } else if (name === 'all-vanish') {
+    // every candidate disappears during a held freeze: slots must stay put
+    await page.waitForSelector('.sysmon-row');
+    const c = await bodyCenter();
+    if (c) await page.mouse.move(c.x, c.y, { steps: 4 });
+    await page.waitForTimeout(3400);
+    const gone = await page.$$eval('.sysmon-row[data-gone]', (e) => e.length);
+    const empty = await page.$('.sysmon-empty');
+    if (gone < 5) issues.push(`all-vanish: expected five frozen tombstone slots, got ${gone}`);
+    if (empty) issues.push('all-vanish: an empty panel replaced the frozen slots during an active freeze');
+  } else if (name === 'loading-totals') {
+    // never-sampled frame: totals are placeholders, not fabricated zeros
+    await page.waitForSelector('.sysmon-foot');
+    const tot = await page.$eval('.sysmon-tot', (e) => e.textContent || '');
+    if (tot.includes('0%')) issues.push('loading-totals: footer shows a fabricated zero CPU before the first sample');
+    if (!tot.includes('—')) issues.push('loading-totals: footer is missing the loading placeholder before the first sample');
+    const empty = await page.$('.sysmon-empty');
+    if (!empty) issues.push('loading-totals: expected the loading placeholder body when no sample exists');
+  } else if (name === 'new-leader') {
+    // outside any interaction the live ranking must admit a new top app
+    await page.waitForTimeout(3400);
+    const has = await page.$$eval('.sysmon-row .sysmon-name', (els) => els.some((e) => /miner/i.test(e.textContent || '')));
+    if (!has) issues.push('new-leader: a new top app outside interaction did not enter the live ranking');
+  }
+}
+
 const failures = [];
 for (const sc of scenes) {
   const page = await browser.newPage({ viewport: { width: sc.size[0], height: sc.size[1] }, deviceScaleFactor: 2 });
+  const seqIssues = [];
   await page.goto(`http://127.0.0.1:4173/?${sc.q}`);
   await page.addStyleTag({ content: WALL });
   if (sc.inject) await page.addStyleTag({ content: sc.inject });
@@ -168,6 +245,7 @@ for (const sc of scenes) {
     }, sc.scroll);
     await page.waitForTimeout(150);
   }
+  if (sc.seq) await runSeq(page, sc.seq, seqIssues);
   // ---- layout assertions
   const issues = await page.evaluate((cfg) => {
     const out = [];
@@ -221,6 +299,7 @@ for (const sc of scenes) {
     }
     return out;
   }, { footer: sc.footer ?? null, scroll: sc.scroll ?? null });
+  issues.push(...seqIssues);
   if (sc.drop) {
     // a live drop indicator must be showing
     const has = await page.$('.drop-slot');

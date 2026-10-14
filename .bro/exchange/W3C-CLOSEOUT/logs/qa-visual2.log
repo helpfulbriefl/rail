@@ -1,0 +1,51 @@
+source 021fb0f · 48 scenes
+PASS  rail-right-classic-light
+PASS  flyout-metrics-classic-light
+PASS  flyout-info-classic-light
+PASS  settings-classic-light
+PASS  rail-right-classic-dark
+PASS  flyout-metrics-classic-dark
+PASS  flyout-info-classic-dark
+PASS  settings-classic-dark
+PASS  rail-right-porcelain
+PASS  flyout-metrics-porcelain
+PASS  flyout-info-porcelain
+PASS  settings-porcelain
+PASS  rail-right-aurora
+PASS  flyout-metrics-aurora
+PASS  flyout-info-aurora
+PASS  settings-aurora
+PASS  rail-right-glass
+PASS  flyout-metrics-glass
+PASS  flyout-info-glass
+PASS  settings-glass
+PASS  rail-right-studio
+PASS  flyout-metrics-studio
+PASS  flyout-info-studio
+PASS  settings-studio
+PASS  rail-bottom-aurora
+PASS  rail-bottom-classic-dark
+PASS  rail-empty-porcelain
+PASS  rail-left-classic-light-L
+PASS  rail-mini-aurora
+PASS  rail-no-meters-porcelain
+PASS  rail-crowd-studio
+PASS  rail-drop-aurora
+PASS  flyout-sys-aurora
+PASS  flyout-sys-empty-porcelain
+PASS  flyout-sys-stale-glass
+PASS  flyout-sys-refused-studio
+PASS  flyout-sys-crowd-studio
+PASS  flyout-sys-cpu-crowd-studio
+PASS  flyout-sys-cold-porcelain
+PASS  flyout-sys-recent-glass
+PASS  seq-hover-cold-porcelain
+PASS  seq-leave-focus-glass
+PASS  seq-tab-focus-studio
+PASS  seq-all-vanish-aurora
+PASS  seq-loading-totals-glass
+PASS  seq-new-leader-porcelain
+PASS  rail-savefail-aurora
+PASS  negative-broken-layout  out-of-window: .rail-bg 976,158,1022,542  (negative fixture)
+
+ALL PASS (48 scenes, source 021fb0f)
