@@ -1,10 +1,10 @@
 ---
-wave: W1C-NATIVE · ver: v3.0 · t_start: auto · t_report: auto
-commit: auto · tag: auto · push: auto · bundle: auto · pack: auto · exchange: auto
-tasks: auto · done: auto · gates_first: yes · repair: 1 · proof_ok: auto · proof_req: auto
-diff_files: auto · diff_add: auto · diff_del: auto · out_of_scope: 0 · q: 1 · contradictions: 1
+wave: W1C-NATIVE · ver: v3.0 · t_start: 2026-10-13 23:48 · t_report: 2026-10-14 03:03
+commit: 669169a · tag: w1c-native-done · push: ❌ · bundle: - · pack: - · exchange: -
+tasks: 5 · done: 4 · gates_first: yes · repair: 1 · proof_ok: 4 · proof_req: 5
+diff_files: 3 · diff_add: 31 · diff_del: 10 · out_of_scope: 0 · q: 3 · contradictions: 1
 K1: 1 · K2: 1 · K3: 1 · K4: 1 · k_why: - · friction_cd: #env
-cd_in: auto · cd_out: auto · prompt_weight: auto · an_in_prev: auto · an_out_prev: auto
+cd_in: 8790 · cd_out: 2579 · prompt_weight: 4515 · an_in_prev: 2745 · an_out_prev: 6016
 ---
 # REPORT W1C-NATIVE — expose the live test panel; repair only the QA harness
 
