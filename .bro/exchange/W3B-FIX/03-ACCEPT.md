@@ -1,0 +1,19 @@
+# W3B-FIX — analyst acceptance
+
+Verdict: PARTIAL overall; CHANGES REQUIRED for remaining UI defects and native acceptance. Published main independently loaded at cf92b2b680285b9ca31f46d183e17f26954ac08f. Significant source progress is accepted, not release readiness.
+
+Reviewed 02-REPORT, proof/INDEX, native-single-instance log and targeted config/Flyout/tracker source. Backend now carries sys_top with the sample timestamp, selects a union of complete CPU/RAM rankings and carries PID/start-time identities. Config save exposes Result, writes/syncs a same-directory temporary file and replaces rather than delete-first. UI includes both metrics and histories. Gate counts 30 Rust tests/38 QA scenes are reported evidence, not analyst reruns. Native log records executable identity/path/PID and local SHA 3BF7E2505694FC54CF52F06A84BCBF85F94E4DAB53EB5FD2E599FDBFA8E0EEB5, size 4441088; it proves a reported launch, not HWND actions or independent analyst hashing.
+
+## Remaining source findings
+1 Timestamp units: tracker RuntimePayload.ts explicitly wall-clock milliseconds from config::now. SysMonitor stale computes Date.now()/1000 - rt.ts > 6. Seconds minus milliseconds cannot correctly detect stale data. Fix shared contract, test exact thresholds and absence of fresh samples, including stopped event delivery.
+2 Empty-at-open latch: SysMonitor initializes frozen ids from apps even when empty, then refreshes only when tab changes. If opened before first metric sample, later nonempty apps produces no rows until tab switch/reopen. Not a valid loading behavior.
+3 Membership/order frozen for entire popup, not only interaction: latest snapshot drops old ids, rows.filter removes them and shifts slots despite alleged stable close targets; new leading apps cannot enter ranking while open. Freeze through pointer/focus/press only, keep slots/disabled tombstones if app exits, resume live ranking outside interaction. Ensure click dispatch remains bound to captured backend identity. Do not mutate permanent membership refs during render to suppress normal live behavior.
+4 Visible limit is six (slice(0,6)), not Owner's top-five. Backend union of top-six lists can remain as bounded candidates, but UI must show up to five and real selected ranking.
+5 save_to claims temp removal on every failure, but open/write_all/sync_all use early ? paths without cleanup. Add scoped cleanup on failures without touching the old valid file. Existing failed_replace test writes to a different directory target then checks the unrelated good file: useful rename-error test but not proof that a failed replacement of THAT existing config preserves it. Improve same-destination failure fixture using isolated controlled Windows conditions; no games with Owner files.
+
+## Evidence / scope corrections
+INDEX row1 is marked check while explicitly admitting native HWND/DPI PARTIAL. Native clipping/hover/OLE/unsaved-close/DPI evidence is still missing; negative CSS fixture proves assertion detects induced failure, not native-window correctness. Retain actual unavailable marks instead of 7/7 implying native readiness. Do not overwrite immutable original report/index; append corrected evidence in next wave.
+
+Out-of-scope history is not zero: workflow exists in tested commit 8451abbb86ffb1e368d9bfc1ba6274582cb582da, independently loaded .github/workflows/build.yml. Later untracking does not erase its historical publication. Record deviation/add-then-remove honestly, no force/history rewrite or re-addition. New tag names are recorded, not proof of functional PASS. No secrets claim beyond reviewed scoped files/log metadata.
+
+Next bounded W3C-CLOSEOUT: these small corrections plus actual native checks on rebuilt EXE. No new redesign/recon; keep accepted source progress and GCM route. CSP remains separately scoped follow-up.
