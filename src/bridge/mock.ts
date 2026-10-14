@@ -91,11 +91,20 @@ export function mock(): Api {
       { id: 'c:\\program files\\steam\\steam.exe', name: 'steam.exe', cpu: 0.4, mem: 186e6, pid: 6200, procs: [proc(6200, 40100)], windows: 1, closable: true },
       { id: 'c:\\windows\\system32\\svchost.exe', name: 'svchost.exe', cpu: 2.8, mem: 42e6, pid: 800, procs: [proc(800, 90000)], windows: 0, closable: false },
       { id: 'c:\\program files\\telegram\\telegram.exe', name: 'telegram.exe', cpu: 0.1, mem: 95e6, pid: 7300, procs: [proc(7300, 1200)], windows: 1, closable: true },
+      // two more eligible apps: more than five rows of candidates, so the UI
+      // must cap itself at exactly five and re-rank them live
+      { id: 'c:\\program files\\discord\\discord.exe', name: 'discord.exe', cpu: 0.9, mem: 300e6, pid: 8400, procs: [proc(8400, 3100)], windows: 1, closable: true },
+      { id: 'C:\\Windows\\explorer.exe', name: 'explorer.exe', cpu: 1.9, mem: 120e6, pid: 2100, procs: [proc(2100, 200000)], windows: 2, closable: true },
     ];
-    const sysTop = q.get('sysmon') === 'empty' ? [] : sysTopAll;
-    // `stale=1` freezes the sample stamp in the past: carry-forward frames must
-    // be visibly marked stale, never silently presented as live data
-    const ts = q.get('stale') === '1' ? Math.floor(Date.now() / 1000) - 60 : Math.floor(Date.now() / 1000);
+    // `cold=1` emits two empty frames first: a popup opened before the first
+    // sample must render the first arriving rows without a tab switch
+    const cold = q.get('cold') === '1';
+    const sysTop = q.get('sysmon') === 'empty' || (cold && t <= 2) ? [] : sysTopAll;
+    // `ts` is unix MILLISECONDS — the same unit the backend emits
+    // (`config::now`). `stale=1` freezes the stamp 60 s in the past:
+    // carry-forward frames keep flowing but must be marked stale. `recent=1`
+    // keeps the sample just under the 6 s threshold: must NOT be stale.
+    const ts = q.get('stale') === '1' ? Date.now() - 60_000 : q.get('recent') === '1' ? Date.now() - 4_000 : Date.now();
     return { items: out, sys: { cpu: 18 + Math.sin(t / 3) * 6, memUsed: 11.2e9, memTotal: 31.9e9 }, sysTop, ts, seq: t };
   };
   if (typeof window !== 'undefined') {

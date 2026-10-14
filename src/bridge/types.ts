@@ -93,7 +93,7 @@ export interface RuntimePayload {
   items: Record<string, ItemRt>;
   sys: SysRt;
   sysTop: SysApp[];
-  /** unix seconds of the newest sample this frame reflects (0 = never) */
+  /** unix milliseconds of the newest sample this frame reflects (0 = never) */
   ts: number;
   /** monotonic frame counter; duplicates (same ts) must not extend history */
   seq: number;

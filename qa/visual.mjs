@@ -82,6 +82,14 @@ scenes.push({ name: 'flyout-sys-aurora', q: 'w=flyout&kind=sys&id=sys&theme=auro
 scenes.push({ name: 'flyout-sys-empty-porcelain', q: 'w=flyout&kind=sys&id=sys&theme=porcelain&sysmon=empty', size: [330, 380] });
 scenes.push({ name: 'flyout-sys-stale-glass', q: 'w=flyout&kind=sys&id=sys&theme=glass&stale=1', size: [330, 380] });
 scenes.push({ name: 'flyout-sys-refused-studio', q: 'w=flyout&kind=sys&id=sys&theme=studio&close=refused', size: [330, 380], clickClose: true });
+// more than five eligible apps: the UI must cap itself at five live rows
+scenes.push({ name: 'flyout-sys-crowd-studio', q: 'w=flyout&kind=sys&id=sys&theme=studio', size: [330, 380], wait: 2600, maxRows: 5, focusClose: true });
+// the CPU ranking tab, driven through the real tab button
+scenes.push({ name: 'flyout-sys-cpu-crowd-studio', q: 'w=flyout&kind=sys&id=sys&theme=studio', size: [330, 380], wait: 2600, clickTab: 'CPU', maxRows: 5 });
+// cold open before the first sample: first rows must arrive without a tab switch
+scenes.push({ name: 'flyout-sys-cold-porcelain', q: 'w=flyout&kind=sys&id=sys&theme=porcelain&cold=1', size: [330, 380], wait: 3200 });
+// sample younger than the staleness threshold: must NOT be marked stale
+scenes.push({ name: 'flyout-sys-recent-glass', q: 'w=flyout&kind=sys&id=sys&theme=glass&recent=1', size: [330, 380], wait: 2600, noSelector: '.sysmon-stale' });
 // persistence failure must surface in the UI
 scenes.push({ name: 'rail-savefail-aurora', q: 'w=rail&theme=aurora&savefail=1', size: [130, 700], needSelector: '.save-warn' });
 // negative fixture: a deliberately broken layout that QA MUST catch
@@ -129,6 +137,28 @@ for (const sc of scenes) {
       await btn.click();
       await page.waitForTimeout(350);
     }
+  }
+  if (sc.clickTab) {
+    // drive the real tab button: proves the second ranking renders
+    const btns = await page.$$('.sysmon-tabs button');
+    for (const b of btns) {
+      const txt = (await b.textContent() ?? '').trim();
+      if (txt === sc.clickTab) {
+        await b.click();
+        break;
+      }
+    }
+    await page.waitForTimeout(400);
+  }
+  if (sc.focusClose) {
+    // keyboard reachability: Tab must land on a close button
+    for (let i = 0; i < 12; i++) {
+      const cls = await page.evaluate(() => String(document.activeElement?.className ?? ''));
+      if (cls.includes('sysmon-close')) break;
+      await page.keyboard.press('Tab');
+    }
+    const ok = await page.evaluate(() => String(document.activeElement?.className ?? '').includes('sysmon-close'));
+    if (!ok) issues.push('keyboard: close button not reachable by Tab');
   }
   if (sc.scroll) {
     // scroll the container to its bottom; the footer assertions run right after
@@ -197,6 +227,11 @@ for (const sc of scenes) {
     if (!has) issues.push('no drop-slot rendered');
   }
   if (sc.needSelector && !(await page.$(sc.needSelector))) issues.push(`missing ${sc.needSelector}`);
+  if (sc.noSelector && (await page.$(sc.noSelector))) issues.push(`unexpected ${sc.noSelector}`);
+  if (sc.maxRows !== undefined) {
+    const n = await page.$$eval('.sysmon-row', (els) => els.length);
+    if (n > sc.maxRows) issues.push(`row-count: ${n} > ${sc.maxRows}`);
+  }
   await page.screenshot({ path: `${OUT}${sc.name}.png`, omitBackground: false });
   const detected = issues.length > 0;
   const pass = sc.expectFail ? detected : !detected;

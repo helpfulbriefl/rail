@@ -180,15 +180,16 @@ fn sync_dir(dir: Option<&Path>) {
 
 /// Atomically replace `dest` with `cfg`.
 ///
-/// The previous file is only ever *replaced*, never unlinked first: if any step
-/// fails the caller still has the last good config on disk.
+/// The previous file is only ever *replaced*, never unlinked first: if any
+/// step fails the caller still has the last good config on disk, and the
+/// temporary file is removed on every failure path (create, write, sync,
+/// replace) so a failed save never leaves litter next to the config.
 pub fn save_to(cfg: &Config, dest: &Path) -> Result<(), SaveError> {
     let text = serde_json::to_string_pretty(cfg).map_err(|e| SaveError::Serialize(e.to_string()))?;
     let tmp = tmp_path(dest);
-    {
-        let mut f = OpenOptions::new().write(true).create(true).truncate(true).open(&tmp).map_err(|e| SaveError::Write(e.to_string()))?;
-        f.write_all(text.as_bytes()).map_err(|e| SaveError::Write(e.to_string()))?;
-        f.sync_all().map_err(|e| SaveError::Write(e.to_string()))?;
+    if let Err(e) = write_tmp(&tmp, &text) {
+        let _ = std::fs::remove_file(&tmp);
+        return Err(e);
     }
     // Windows: MoveFileExW with MOVEFILE_REPLACE_EXISTING — an existing
     // destination is replaced, it does not have to be absent.
@@ -197,6 +198,15 @@ pub fn save_to(cfg: &Config, dest: &Path) -> Result<(), SaveError> {
         return Err(SaveError::Replace(e.to_string()));
     }
     sync_dir(dest.parent());
+    Ok(())
+}
+
+/// Write + fsync the temporary file. Any failure bubbles up so the caller
+/// runs the scoped temp cleanup.
+fn write_tmp(tmp: &Path, text: &str) -> Result<(), SaveError> {
+    let mut f = OpenOptions::new().write(true).create(true).truncate(true).open(tmp).map_err(|e| SaveError::Write(e.to_string()))?;
+    f.write_all(text.as_bytes()).map_err(|e| SaveError::Write(e.to_string()))?;
+    f.sync_all().map_err(|e| SaveError::Write(e.to_string()))?;
     Ok(())
 }
 
@@ -301,21 +311,42 @@ mod tests {
     }
 
     #[test]
-    fn failed_replace_preserves_the_previous_valid_config() {
-        let d = tmpdir("fail");
+    fn replace_failure_cleans_temp_and_leaves_destination() {
+        let d = tmpdir("failreplace");
+        let dest = d.join("rail.config.json");
+        save_to(&sample(), &dest).expect("first save");
+        // A directory in place of the destination makes the rename fail on
+        // Windows (ERROR_ACCESS_DENIED) — a real, reproducible failure at
+        // the same directory that needs no permission games.
+        let blocked = d.join("blocked.config.json");
+        std::fs::create_dir(&blocked).unwrap();
+        let err = save_to(&sample(), &blocked).expect_err("rename onto a directory must fail");
+        assert!(matches!(err, SaveError::Replace(_)), "got {err}");
+        // the temp file is cleaned up on the replace failure path
+        assert!(!d.join(".blocked.config.json.tmp").exists());
+        // and the unrelated good config is untouched
+        assert!(dest.is_file());
+        let _ = std::fs::remove_dir_all(&d);
+    }
+
+    #[test]
+    fn write_failure_preserves_the_same_destination_config() {
+        let d = tmpdir("failwrite");
         let dest = d.join("rail.config.json");
         save_to(&sample(), &dest).expect("first save");
         let good = std::fs::read_to_string(&dest).unwrap();
-        // A directory in place of the destination makes the rename fail on
-        // Windows (ERROR_ACCESS_DENIED / ERROR_ALREADY_EXISTS) — a real,
-        // reproducible failure that needs no permission games.
-        std::fs::create_dir(d.join("rail.config.json.dir")).unwrap();
-        let blocked = d.join("rail.config.json.dir");
-        let err = save_to(&sample(), &blocked).expect_err("rename onto a directory must fail");
-        assert!(matches!(err, SaveError::Replace(_)), "got {err}");
-        // the good config is untouched and no temp file is left next to it
+        // Occupy the deterministic temp path with a directory: the temp file
+        // cannot be created, so the save fails before the destination is ever
+        // touched — an isolated, controlled failure at the same destination.
+        std::fs::create_dir(d.join(".rail.config.json.tmp")).unwrap();
+        let err = save_to(&sample(), &dest).expect_err("temp create must fail");
+        assert!(matches!(err, SaveError::Write(_)), "got {err}");
+        // the existing config at THAT destination is preserved verbatim
         assert_eq!(std::fs::read_to_string(&dest).unwrap(), good);
-        assert!(!d.join(".rail.config.json.tmp").exists());
+        // cleanup is best-effort: it must not panic on the occupied path, and
+        // a later successful save still works once the path is freed
+        std::fs::remove_dir(d.join(".rail.config.json.tmp")).unwrap();
+        save_to(&sample(), &dest).expect("save after cleanup");
         let _ = std::fs::remove_dir_all(&d);
     }
 

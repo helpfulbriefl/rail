@@ -59,35 +59,81 @@ export function Flyout() {
  * (top-CPU ∪ top-RAM), so switching tabs never re-asks the OS and the CPU tab
  * is a real system-wide ranking, not a reorder of the RAM five.
  *
- * Row membership and order are **frozen** while the popup is open (re-frozen
- * only on tab switch): the X a user aims at stays bound to the same
- * application instead of sliding to a neighbour when the next sample arrives.
- * Values of the frozen rows keep refreshing by id.
+ * Sample contract (`types.ts`): `ts` is unix **milliseconds** of the newest
+ * real sample; `seq` counts frames and carry-forward frames repeat the last
+ * `ts`. A sample is stale once wall-clock time since `ts` exceeds
+ * `STALE_MS` — measured from the sample stamp, so the marker flips even
+ * while carry-forward frames keep arriving (sampling stopped) and even
+ * without a rerender (a ticking clock drives the check). An absent sample
+ * (`ts <= 0`) is an explicit loading state: never stale, never zeros.
+ *
+ * Ranking is **live** outside interaction: every frame recomputes the
+ * selected top-five, so new leaders enter and exited apps leave on their own.
+ * While someone aims at a row (hover), presses (pointer down) or focuses it
+ * (keyboard), membership and order freeze; a row whose app exits inside that
+ * interval becomes a disabled tombstone instead of disappearing, so neighbour
+ * slots and the X under the cursor never shift. The close request captures
+ * the row identity (full path + PID/start-time set) at the press boundary;
+ * the backend revalidates it before any WM_CLOSE.
  */
+const STALE_MS = 6000;
+
 function SysMonitor() {
   const { api, rt, sysHist } = useApp();
   const apps = rt.sysTop;
   const sys = rt.sys;
   const [tab, setTab] = useState<'ram' | 'cpu'>('ram');
   const [closeState, setCloseState] = useState<Record<string, { pending: boolean; text: string; title: string }>>({});
+  // frozen membership while the user interacts; null = live ranking
+  const [frozenIds, setFrozenIds] = useState<string[] | null>(null);
+  // identity captured at the press/focus boundary of the X button
+  const capture = useRef<{ id: string; procs: SysApp['procs'] } | null>(null);
+  // whether the pointer is inside the list: a press that ends inside keeps
+  // the freeze (the user is still aiming), one that ends outside releases it
+  const inside = useRef(false);
+  // ticking clock: staleness must flip while events have stopped, without
+  // waiting for the next frame to rerender the popup
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const t = window.setInterval(() => setTick((n) => n + 1), 1000);
+    return () => window.clearInterval(t);
+  }, []);
 
   const byId = useMemo(() => new Map(apps.map((a) => [a.id, a])), [apps]);
-  const frozen = useRef<{ tab: string; ids: string[] } | null>(null);
-  if (!frozen.current || frozen.current.tab !== tab) {
-    const sorted = [...apps].sort((a, b) => (tab === 'cpu' ? b.cpu - a.cpu || a.id.localeCompare(b.id) : b.mem - a.mem || a.id.localeCompare(b.id)));
-    frozen.current = { tab, ids: sorted.slice(0, 6).map((a) => a.id) };
-  }
-  const rows = frozen.current.ids.map((id) => byId.get(id)).filter((a): a is SysApp => a !== undefined);
+  // live selection: recomputed from every frame — a new leader enters the
+  // top-five as soon as its sample arrives, an exited app leaves
+  const liveIds = useMemo(() => {
+    const sorted = [...apps].sort((a, b) =>
+      tab === 'cpu' ? b.cpu - a.cpu || a.id.localeCompare(b.id) : b.mem - a.mem || a.id.localeCompare(b.id),
+    );
+    return sorted.slice(0, 5).map((a) => a.id);
+  }, [apps, tab]);
+  const ids = frozenIds ?? liveIds;
 
-  // honest stale contract: carry-forward frames keep `ts` fixed; if the newest
-  // sample is older than the fast cadence could explain, the numbers are stale
-  const stale = rt.ts > 0 && Date.now() / 1000 - rt.ts > 6;
-  const empty = apps.length === 0;
+  const noSample = rt.ts <= 0;
+  const stale = !noSample && Date.now() - rt.ts > STALE_MS;
+
+  // interaction-scoped freeze: `arm` snapshots the current top-five once,
+  // `release` resumes live ranking. Released by pointer-leave, focus-leave
+  // or a press that ends outside the list — never latched for the popup.
+  const arm = () => setFrozenIds((cur) => cur ?? liveIds);
+  const release = () => setFrozenIds(null);
+  useEffect(() => {
+    const up = () => {
+      if (!inside.current) setFrozenIds(null);
+    };
+    window.addEventListener('pointerup', up);
+    return () => window.removeEventListener('pointerup', up);
+  }, []);
 
   const doClose = (app: SysApp) => {
+    // dispatch the identity captured at the press boundary, not a live
+    // lookup; the backend revalidates PID + start-time before WM_CLOSE
+    const target = capture.current && capture.current.id === app.id ? capture.current : { id: app.id, procs: app.procs };
+    capture.current = null;
     setCloseState((s) => ({ ...s, [app.id]: { pending: true, text: '…', title: 'запрос отправлен' } }));
     void api
-      .sysClose({ id: app.id, procs: app.procs })
+      .sysClose({ id: target.id, procs: target.procs })
       .then((res) => {
         const text = res.status === 'dispatched' ? `×${res.dispatched}` : res.status === 'refused' ? 'нельзя' : 'нет';
         setCloseState((s) => ({ ...s, [app.id]: { pending: false, text, title: res.reason } }));
@@ -127,16 +173,61 @@ function SysMonitor() {
           </button>
         </div>
       </div>
-      <div className="sysmon-body">
-        {empty ? (
+      <div
+        className="sysmon-body"
+        onPointerEnter={() => {
+          inside.current = true;
+          arm();
+        }}
+        onPointerLeave={() => {
+          inside.current = false;
+          release();
+        }}
+        onPointerDown={arm}
+        onFocus={arm}
+        onBlur={release}
+      >
+        {noSample ? (
+          <div className="sysmon-empty">Ожидание первых данных…</div>
+        ) : apps.length === 0 ? (
           <div className="sysmon-empty">Нет данных</div>
         ) : (
-          rows.map((app) => {
+          ids.map((id) => {
+            const app = byId.get(id);
+            const st = closeState[id];
+            if (!app) {
+              // tombstone: the app exited while the user was interacting —
+              // the slot stays put (disabled) instead of shifting neighbours
+              return (
+                <div key={id} className="sysmon-row" data-gone="" data-closing={st ? '' : undefined}>
+                  <span className="sysmon-icon">—</span>
+                  <div className="sysmon-info">
+                    <span className="sysmon-name">приложение закрыто</span>
+                    <span className="sysmon-sub">—</span>
+                  </div>
+                  <span className="sysmon-val">—</span>
+                  <span className="sysmon-val">—</span>
+                  {st ? (
+                    <span className="sysmon-msg" title={st.title}>
+                      {st.text}
+                    </span>
+                  ) : null}
+                  <button
+                    type="button"
+                    className="sysmon-close"
+                    disabled
+                    title="приложение закрыто"
+                    aria-label="Приложение закрыто"
+                  >
+                    <X size={12} />
+                  </button>
+                </div>
+              );
+            }
             const mem = bytes(app.mem);
             const letter = app.name[0]?.toUpperCase() ?? '?';
-            const st = closeState[app.id];
             return (
-              <div key={app.id} className="sysmon-row" data-closing={st ? '' : undefined}>
+              <div key={id} className="sysmon-row" data-closing={st ? '' : undefined}>
                 <span className="sysmon-icon">{letter}</span>
                 <div className="sysmon-info">
                   <span className="sysmon-name" title={app.id}>
@@ -165,6 +256,12 @@ function SysMonitor() {
                   disabled={!app.closable || st !== undefined}
                   title={app.closable ? 'Закрыть окна приложения' : 'защищённый или системный процесс'}
                   aria-label={`Закрыть ${app.name}`}
+                  onPointerDown={() => {
+                    capture.current = { id, procs: app.procs };
+                  }}
+                  onFocus={() => {
+                    capture.current = { id, procs: app.procs };
+                  }}
                   onClick={() => doClose(app)}
                 >
                   <X size={12} />
@@ -173,7 +270,7 @@ function SysMonitor() {
             );
           })
         )}
-        {stale && !empty ? <div className="sysmon-stale">данные устарели</div> : null}
+        {stale ? <div className="sysmon-stale">данные устарели</div> : null}
       </div>
       <div className="sysmon-foot">
         <span className="sysmon-tot">
