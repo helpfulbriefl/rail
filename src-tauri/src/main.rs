@@ -500,6 +500,30 @@ fn close_windows(core: State<Shared>, id: String) {
     }
 }
 
+/// Safe system-app close: send WM_CLOSE to every top-level window whose exe
+/// matches the given path. Never force-kills — the app can show an
+/// unsaved-work dialog. Skips Rail's own windows and system processes.
+#[tauri::command]
+fn sys_close(core: State<Shared>, exe: String) {
+    let exe_lower = exe.to_lowercase();
+    let own: Vec<isize> = core.rt.lock().unwrap_or_else(|e| e.into_inner()).own.clone();
+    let wins = win::enum_windows();
+    for w in &wins {
+        if own.contains(&w.hwnd) {
+            continue;
+        }
+        let path = win::process_path(w.pid).map(|p| p.to_lowercase()).unwrap_or_default();
+        if path != exe_lower {
+            continue;
+        }
+        // never close system / critical processes
+        if path.contains("system32") || path.contains("drvfail") || path.contains("svchost") {
+            continue;
+        }
+        win::close(w.hwnd);
+    }
+}
+
 #[tauri::command]
 fn reveal(core: State<Shared>, id: String) {
     let p = core.cfg.lock().unwrap_or_else(|e| e.into_inner()).items.iter().find(|i| i.id == id).map(|i| i.launch_path.clone());
@@ -719,6 +743,8 @@ fn build_tray_menu(app: &AppHandle, core: &Shared) -> tauri::Result<Menu<tauri::
         ("classic-dark", "Классика · тёмная"),
         ("porcelain", "Фарфор"),
         ("aurora", "Аврора"),
+        ("glass", "Стекло"),
+        ("studio", "Студия"),
     ];
     let theme_items: Vec<CheckMenuItem<tauri::Wry>> = themes
         .iter()
@@ -810,7 +836,7 @@ fn main() {
         .manage(core.clone())
         .manage(LaunchQueue(tx))
         .invoke_handler(tauri::generate_handler![
-            snapshot, add_paths, pick_files, reorder, remove_item, launch, activate, close_windows, reveal, item_menu,
+            snapshot, add_paths, pick_files, reorder, remove_item, launch, activate, close_windows, sys_close, reveal, item_menu,
             diag_log,
             set_settings, set_hit_rect, drag_active, rail_ready, request_hide, rail_hidden, show_flyout, hide_flyout,
             flyout_hidden, open_settings, close_settings, quit

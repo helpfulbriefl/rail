@@ -386,6 +386,16 @@ img {
   width: 44px;
 }
 
+.rail-foot[data-interactive] {
+  cursor: pointer;
+  border-radius: 8px;
+  transition: background var(--dur-fast) var(--ease-out);
+}
+
+.rail-foot[data-interactive]:hover {
+  background: var(--hover);
+}
+
 .meter-row {
   display: flex;
   align-items: baseline;
@@ -714,7 +724,7 @@ img {
 
 .themes {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 10px;
 }
 
@@ -1114,4 +1124,155 @@ img {
   [data-theme="aurora"] .rail-bg::before {
     animation: none;
   }
+}
+
+/* ---------------------------------------------------------------- dock scroll */
+
+.dock {
+  overflow: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--track) transparent;
+}
+
+.dock::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+.dock::-webkit-scrollbar-thumb {
+  border-radius: var(--r-pill);
+  background: var(--track);
+}
+
+/* ---------------------------------------------------------------- sys monitor */
+
+.sysmon-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-2);
+}
+
+.sysmon-title {
+  font-size: var(--fs-title);
+  font-weight: 650;
+  color: var(--text);
+}
+
+.sysmon-tabs {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 7px;
+  background: var(--track);
+}
+
+.sysmon-tabs button {
+  height: 20px;
+  padding: 0 10px;
+  border-radius: 5px;
+  font-family: var(--font-num);
+  font-size: var(--fs-micro);
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.sysmon-tabs button.on {
+  background: var(--block-bg);
+  color: var(--text);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 8%);
+}
+
+.sysmon-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.sysmon-empty {
+  padding: var(--s-3);
+  text-align: center;
+  color: var(--faint);
+  font-size: var(--fs-small);
+}
+
+.sysmon-row {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  padding: 4px 6px;
+  border-radius: 8px;
+  background: var(--surface-2);
+  border: 1px solid var(--hairline);
+}
+
+.sysmon-icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-family: var(--font-num);
+  font-size: var(--fs-small);
+  font-weight: 700;
+}
+
+.sysmon-info {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  gap: 1px;
+}
+
+.sysmon-name {
+  overflow: hidden;
+  font-size: var(--fs-small);
+  font-weight: 600;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--text);
+}
+
+.sysmon-val {
+  font-family: var(--font-num);
+  font-size: var(--fs-micro);
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.sysmon-close {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  color: var(--faint);
+  font-size: 11px;
+  transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+
+.sysmon-close:not(:disabled):hover {
+  background: rgb(239 68 68 / 12%);
+  color: var(--lamp-hung);
+}
+
+.sysmon-close:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.sysmon-foot {
+  padding-top: 4px;
+  border-top: 1px solid var(--hairline);
+  font-family: var(--font-num);
+  font-size: var(--fs-micro);
+  color: var(--faint);
 }

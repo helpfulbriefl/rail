@@ -365,7 +365,47 @@ export function Rail() {
             {s.showMeters !== false && (
               <>
                 <motion.div className="rail-sep" style={axisStyle(half)} />
-                <motion.div className="rail-foot" style={axisStyle(half)}>
+                <motion.div
+                  className="rail-foot"
+                  style={axisStyle(half)}
+                  data-interactive=""
+                  role="button"
+                  tabIndex={0}
+                  aria-label="Монитор системных приложений"
+                  onClick={() => {
+                    const el = capRef.current;
+                    if (!el) return;
+                    const r = el.getBoundingClientRect();
+                    void api.showFlyout({
+                      kind: 'sys',
+                      id: 'sys',
+                      x: r.left,
+                      y: r.top,
+                      w: r.width,
+                      h: r.height,
+                      width: 300,
+                      height: 280,
+                    });
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      const el = capRef.current;
+                      if (!el) return;
+                      const r = el.getBoundingClientRect();
+                      void api.showFlyout({
+                        kind: 'sys',
+                        id: 'sys',
+                        x: r.left,
+                        y: r.top,
+                        w: r.width,
+                        h: r.height,
+                        width: 300,
+                        height: 280,
+                      });
+                    }
+                  }}
+                >
                   <Meter k="CPU" v={rt.sys.cpu} />
                   <Meter k="RAM" v={(rt.sys.memUsed / Math.max(rt.sys.memTotal, 1)) * 100} />
                 </motion.div>

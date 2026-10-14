@@ -31,9 +31,20 @@ pub struct SysRt {
 }
 
 #[derive(Serialize, Clone, Default)]
+pub struct SysApp {
+    pub id: String,
+    pub name: String,
+    pub cpu: f32,
+    pub mem: u64,
+    pub pid: u32,
+    pub closable: bool,
+}
+
+#[derive(Serialize, Clone, Default)]
 pub struct RuntimePayload {
     pub items: HashMap<String, ItemRt>,
     pub sys: SysRt,
+    pub sys_top: Vec<SysApp>,
 }
 
 fn file_name(p: &str) -> &str {
@@ -342,6 +353,41 @@ fn scan(core: &Shared, paths: &mut win::PathCache, sys: &mut System, metrics: bo
                 r.uptime = r.uptime.max(p.run_time());
             }
         }
+
+        // ---- system-wide top-5 by exe path (aggregate multi-process apps) ----
+        let own_exe = std::env::current_exe()
+            .map(|p| p.to_string_lossy().to_lowercase())
+            .unwrap_or_default();
+        let mut by_exe: HashMap<String, (String, u32, f32, u64)> = HashMap::new();
+        for p in sys.processes().values() {
+            let Some(exe) = p.exe() else { continue };
+            let exe = exe.to_string_lossy().to_lowercase();
+            if exe == own_exe {
+                continue;
+            }
+            let name = p.name().to_string_lossy().to_string();
+            let entry = by_exe.entry(exe.clone()).or_insert_with(|| (name, p.pid().as_u32(), 0.0, 0));
+            entry.2 += p.cpu_usage() / ncpu;
+            entry.3 += p.memory();
+        }
+        let closable: HashSet<String> = by_path.keys().cloned().collect();
+        let mut top: Vec<SysApp> = by_exe
+            .iter()
+            .filter(|(exe, _)| {
+                let e = exe.as_str();
+                !e.contains("system32") && !e.contains("drvfail") && !e.contains("svchost")
+            })
+            .map(|(exe, (name, pid, cpu, mem))| SysApp {
+                id: exe.clone(),
+                name: name.clone(),
+                cpu: *cpu,
+                mem: *mem,
+                pid: *pid,
+                closable: closable.contains(exe.as_str()) || exe.ends_with(".exe"),
+            })
+            .collect();
+        top.sort_by(|a, b| b.mem.cmp(&a.mem).then(b.cpu.total_cmp(&a.cpu)));
+        out.sys_top = top.into_iter().take(5).collect();
     }
 
     let mut rt = core.rt.lock().unwrap_or_else(|e| e.into_inner());

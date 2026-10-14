@@ -1,6 +1,6 @@
 /** Browser-only backend used for design previews and automated visual QA. */
 import type { Api } from './api';
-import type { Config, Item, ItemRt, RuntimePayload, Settings, Theme, Side } from './types';
+import type { Config, Item, ItemRt, RuntimePayload, Settings, Theme, Side, SysApp } from './types';
 
 const q = new URLSearchParams(typeof location !== 'undefined' ? location.search : '');
 
@@ -81,7 +81,14 @@ export function mock(): Api {
         out[it.id] = { ...z, ...b, cpu: (b.cpu ?? 0) * (0.6 + wob), read: it.id === 'm1' && t % 4 === 0 ? 3.2e6 : 12e3 * wob, write: 4e3 * wob, uptime: (b.uptime ?? 0) + t } as ItemRt;
       } else out[it.id] = z;
     }
-    return { items: out, sys: { cpu: 18 + Math.sin(t / 3) * 6, memUsed: 11.2e9, memTotal: 31.9e9 } };
+    const sysTop: SysApp[] = [
+      { id: 'c:\\program files\\chrome\\chrome.exe', name: 'chrome.exe', cpu: 8.2, mem: 2.3e9, pid: 4200, closable: true },
+      { id: 'c:\\program files\\code\\code.exe', name: 'code.exe', cpu: 3.1, mem: 812e6, pid: 5100, closable: true },
+      { id: 'c:\\program files\\steam\\steam.exe', name: 'steam.exe', cpu: 0.4, mem: 186e6, pid: 6200, closable: true },
+      { id: 'c:\\windows\\system32\\svchost.exe', name: 'svchost.exe', cpu: 2.8, mem: 42e6, pid: 800, closable: false },
+      { id: 'c:\\program files\\telegram\\telegram.exe', name: 'telegram.exe', cpu: 0.1, mem: 95e6, pid: 7300, closable: true },
+    ];
+    return { items: out, sys: { cpu: 18 + Math.sin(t / 3) * 6, memUsed: 11.2e9, memTotal: 31.9e9 }, sysTop };
   };
   if (typeof window !== 'undefined') {
     setInterval(() => emit('runtime', rt()), 1000);
@@ -133,6 +140,7 @@ export function mock(): Api {
       setTimeout(() => emit('rail', { action: 'show', seq: 2 }), 1200);
     },
     showFlyout: async () => {},
+    sysClose: async () => {},
     hideFlyout: async () => {},
     flyoutHidden: async () => {},
     openSettings: async () => {},

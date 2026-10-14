@@ -1,7 +1,7 @@
 import { AnimatePresence, motion } from 'motion/react';
-import { FolderOpen, Layers } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
-import type { FlyoutCmd } from '../bridge/types';
+import { FolderOpen, Layers, X } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import type { FlyoutCmd, SysApp } from '../bridge/types';
 import { Lamp } from '../ui/Lamp';
 import { Num } from '../ui/Num';
 import { Sparkline } from '../ui/Sparkline';
@@ -10,7 +10,7 @@ import { lampOf } from '../ui/status';
 import { useApp } from '../ui/useApp';
 
 export function Flyout() {
-  const { api, config } = useApp();
+  const { api, config, rt } = useApp();
   const [cmd, setCmd] = useState<FlyoutCmd | null>(null);
   const [open, setOpen] = useState(false);
   const seq = useRef(0);
@@ -25,7 +25,8 @@ export function Flyout() {
       }),
     [api],
   );
-  const item = config.items.find((i) => i.id === cmd?.id);
+  const isSys = cmd?.kind === 'sys';
+  const item = isSys ? undefined : config.items.find((i) => i.id === cmd?.id);
   const side = cmd?.side ?? config.settings.side;
   const from = { right: { x: 10 }, left: { x: -10 }, bottom: { y: 10 }, top: { y: -10 } }[side];
   const origin = { right: '100% 50%', left: '0% 50%', bottom: '50% 100%', top: '50% 0%' }[side];
@@ -33,7 +34,7 @@ export function Flyout() {
   return (
     <div className="fly-stage">
       <AnimatePresence onExitComplete={() => void api.flyoutHidden(seq.current)}>
-        {open && item && cmd && (
+        {open && (isSys || item) && cmd && (
           <motion.div
             key={cmd.seq}
             className="card"
@@ -43,11 +44,95 @@ export function Flyout() {
             exit={{ opacity: 0, scale: 0.96, ...from, transition: { duration: 0.12 } }}
             transition={{ type: 'spring', stiffness: 520, damping: 34 }}
           >
-            {cmd.kind === 'metrics' ? <Metrics id={item.id} /> : <Info id={item.id} />}
+            {isSys ? <SysMonitor apps={rt.sysTop} sys={rt.sys} /> : cmd.kind === 'metrics' ? <Metrics id={item!.id} /> : <Info id={item!.id} />}
           </motion.div>
         )}
       </AnimatePresence>
     </div>
+  );
+}
+
+function SysMonitor({ apps, sys }: { apps: SysApp[]; sys: { cpu: number; memUsed: number; memTotal: number } }) {
+  const { api } = useApp();
+  const [tab, setTab] = useState<'ram' | 'cpu'>('ram');
+  const [closingId, setClosingId] = useState<string | null>(null);
+  const stale = useMemo(() => apps.length === 0, [apps.length]);
+
+  const sorted = useMemo(() => {
+    const totalMem = Math.max(sys.memTotal, 1);
+    return [...apps].sort((a, b) => (tab === 'cpu' ? b.cpu - a.cpu : b.mem / totalMem - a.mem / totalMem)).slice(0, 5);
+  }, [apps, tab, sys.memTotal]);
+
+  const doClose = (id: string) => {
+    setClosingId(id);
+    void api.sysClose(id).finally(() => setClosingId(null));
+  };
+
+  return (
+    <>
+      <div className="sysmon-head">
+        <span className="sysmon-title">Система</span>
+        <div className="sysmon-tabs" role="tablist">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === 'cpu'}
+            className={tab === 'cpu' ? 'on' : ''}
+            onClick={() => setTab('cpu')}
+          >
+            CPU
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === 'ram'}
+            className={tab === 'ram' ? 'on' : ''}
+            onClick={() => setTab('ram')}
+          >
+            RAM
+          </button>
+        </div>
+      </div>
+      <div className="sysmon-body">
+        {stale ? (
+          <div className="sysmon-empty">Нет данных</div>
+        ) : (
+          sorted.map((app) => {
+            const memPct = (app.mem / Math.max(sys.memTotal, 1)) * 100;
+            const val = tab === 'cpu' ? app.cpu : memPct;
+            const letter = app.name[0]?.toUpperCase() ?? '?';
+            const isClosing = closingId === app.id;
+            return (
+              <div key={app.id} className="sysmon-row">
+                <span className="sysmon-icon">{letter}</span>
+                <div className="sysmon-info">
+                  <span className="sysmon-name" title={app.id}>
+                    {app.name}
+                  </span>
+                  <span className="sysmon-val">
+                    {val.toFixed(1)}%
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  className="sysmon-close"
+                  disabled={!app.closable || isClosing}
+                  aria-label={`Закрыть ${app.name}`}
+                  onClick={() => doClose(app.id)}
+                >
+                  {isClosing ? '…' : <X size={12} />}
+                </button>
+              </div>
+            );
+          })
+        )}
+      </div>
+      <div className="sysmon-foot">
+        <span>
+          CPU {sys.cpu.toFixed(0)}% · RAM {(sys.memUsed / Math.max(sys.memTotal, 1) * 100).toFixed(0)}%
+        </span>
+      </div>
+    </>
   );
 }
 

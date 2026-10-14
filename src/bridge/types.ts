@@ -1,4 +1,4 @@
-export type Theme = 'classic-light' | 'classic-dark' | 'porcelain' | 'aurora';
+export type Theme = 'classic-light' | 'classic-dark' | 'porcelain' | 'aurora' | 'glass' | 'studio';
 export type Side = 'right' | 'left' | 'bottom' | 'top';
 export type RailScale = 'mini' | 'compact' | 'normal';
 
@@ -62,9 +62,25 @@ export interface SysRt {
   memTotal: number;
 }
 
+/** One aggregated application in the system-wide top-5 monitor. */
+export interface SysApp {
+  /** full exe path, lower-case — the frozen identity */
+  id: string;
+  name: string;
+  /** % of total logical CPU (all cores = 100%) */
+  cpu: number;
+  /** working-set bytes (all processes under this exe summed) */
+  mem: number;
+  /** representative PID (lowest) for display only */
+  pid: number;
+  /** false when the exe belongs to a system / critical process */
+  closable: boolean;
+}
+
 export interface RuntimePayload {
   items: Record<string, ItemRt>;
   sys: SysRt;
+  sysTop: SysApp[];
 }
 
 export interface RailCmd {
@@ -75,7 +91,7 @@ export interface RailCmd {
 export interface FlyoutCmd {
   action: 'show' | 'hide';
   seq: number;
-  kind?: 'info' | 'metrics';
+  kind?: 'info' | 'metrics' | 'sys';
   id?: string;
   side?: Side;
 }

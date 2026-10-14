@@ -26,7 +26,8 @@ export interface Api {
   railHidden(seq: number): Promise<void>;
   /** Phase-0 telemetry sink; a no-op unless the backend runs with RAIL_DIAG=1. */
   diagLog(msg: string): void;
-  showFlyout(req: { kind: 'info' | 'metrics'; id: string; width: number; height: number } & Rect): Promise<void>;
+  showFlyout(req: { kind: 'info' | 'metrics' | 'sys'; id: string; width: number; height: number } & Rect): Promise<void>;
+  sysClose(exe: string): Promise<void>;
   hideFlyout(): Promise<void>;
   flyoutHidden(seq: number): Promise<void>;
   openSettings(): Promise<void>;
@@ -82,6 +83,7 @@ async function tauriApi(): Promise<Api> {
     requestHide: () => invoke('request_hide'),
     railHidden: (seq) => invoke('rail_hidden', { seq }),
     showFlyout: (req) => invoke('show_flyout', { req }),
+    sysClose: (exe) => invoke('sys_close', { exe }),
     hideFlyout: () => invoke('hide_flyout'),
     flyoutHidden: (seq) => invoke('flyout_hidden', { seq }),
     openSettings: () => invoke('open_settings'),

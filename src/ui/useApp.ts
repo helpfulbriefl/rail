@@ -10,7 +10,7 @@ export interface AppState {
   hist: Record<string, { cpu: number[]; mem: number[]; io: number[] }>;
 }
 
-const empty: RuntimePayload = { items: {}, sys: { cpu: 0, memUsed: 0, memTotal: 1 } };
+const empty: RuntimePayload = { items: {}, sys: { cpu: 0, memUsed: 0, memTotal: 1 }, sysTop: [] };
 
 export function useBoot(): AppState | null {
   const [api, setApi] = useState<Api | null>(null);
