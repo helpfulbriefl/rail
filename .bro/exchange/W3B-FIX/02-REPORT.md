@@ -34,5 +34,6 @@ real left-click on a sysmon row/X on each side & DPI · footer→popup cursor tr
 
 ## Out of scope
 - `.github/workflows/build.yml` was committed once (8451abb) before noticing TASK §9 "intentionally untracked .github"; restored to untracked via `git rm --cached` in the report commit, file preserved on disk.
+- CSP / `capabilities/default.json` tightening: recorded as a security follow-up per boot order; no permission configuration was touched in this wave.
 
 Secrets not opened: yes
