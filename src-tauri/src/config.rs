@@ -26,7 +26,7 @@ pub const HOVER_MAX_MS: u32 = 3000;
 impl Default for Settings {
     fn default() -> Self {
         Self {
-            theme: "aurora".into(),
+            theme: "glass".into(),
             side: "right".into(),
             autostart: false,
             edge_reveal: true,
@@ -44,6 +44,9 @@ impl Default for Settings {
 impl Settings {
     /// Clamp everything that came from disk into the ranges the UI can express.
     pub fn sanitize(&mut self) {
+        if !matches!(self.theme.as_str(), "classic-light" | "classic-dark" | "porcelain" | "aurora" | "glass" | "studio") {
+            self.theme = "glass".into();
+        }
         self.hover_delay_ms = self.hover_delay_ms.clamp(300, HOVER_MAX_MS);
         self.hide_delay_ms = self.hide_delay_ms.clamp(300, 5000);
         if !matches!(self.icon_size, 30 | 36 | 44) {

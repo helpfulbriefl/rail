@@ -8,11 +8,13 @@ import { useApp } from '../ui/useApp';
 
 const SPRING = { type: 'spring', stiffness: 500, damping: 36 } as const;
 
-const THEMES: { id: Theme; name: string }[] = [
-  { id: 'classic-light', name: 'Классика' },
-  { id: 'classic-dark', name: 'Классика' },
+const THEMES: { id: Theme; name: string; sub?: string }[] = [
+  { id: 'classic-light', name: 'Классика', sub: 'светлая' },
+  { id: 'classic-dark', name: 'Классика', sub: 'тёмная' },
   { id: 'porcelain', name: 'Фарфор' },
   { id: 'aurora', name: 'Аврора' },
+  { id: 'glass', name: 'Стекло', sub: 'чистая' },
+  { id: 'studio', name: 'Студия', sub: 'тёплая' },
 ];
 
 export function SettingsView() {
@@ -52,7 +54,7 @@ export function SettingsView() {
                 </span>
                 <span className="theme-name">
                   {t.name}
-                  {t.id.startsWith('classic') && <small>{t.id.endsWith('light') ? 'светлая' : 'тёмная'}</small>}
+                  {t.sub && <small>{t.sub}</small>}
                 </span>
               </button>
             ))}

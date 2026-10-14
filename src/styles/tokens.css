@@ -133,3 +133,51 @@
   --track: rgb(99 102 241 / 10%);
   --r-rail: 24px;
 }
+
+/* ---------- Glass (clean light, subtle translucency, default) ---------- */
+[data-theme="glass"] {
+  --surface: rgb(255 255 255 / 92%);
+  --surface-2: rgb(255 255 255 / 78%);
+  --border: rgb(0 0 0 / 8%);
+  --hairline: rgb(0 0 0 / 5%);
+  --text: #1a1a2e;
+  --muted: #5a5a6e;
+  --faint: #9a9ab0;
+  --hover: rgb(0 0 0 / 4%);
+  --press: rgb(0 0 0 / 8%);
+  --block-bg: rgb(255 255 255 / 88%);
+  --block-border: rgb(0 0 0 / 7%);
+  --accent: #2563eb;
+  --accent-soft: rgb(37 99 235 / 10%);
+  --shadow: 0 2px 12px rgb(0 0 0 / 10%), 0 1px 3px rgb(0 0 0 / 6%);
+  --shadow-lift: 0 8px 24px rgb(0 0 0 / 14%);
+  --track: rgb(0 0 0 / 6%);
+  --r-rail: 16px;
+  --r-tile: 10px;
+  --r-block: 10px;
+  --r-card: 14px;
+}
+
+/* ---------- Studio (warm light, large radii) ---------- */
+[data-theme="studio"] {
+  --surface: rgb(255 252 248 / 96%);
+  --surface-2: rgb(255 250 244 / 80%);
+  --border: rgb(180 160 140 / 14%);
+  --hairline: rgb(180 160 140 / 8%);
+  --text: #2d2520;
+  --muted: #7a6e64;
+  --faint: #b0a498;
+  --hover: rgb(217 119 6 / 6%);
+  --press: rgb(217 119 6 / 10%);
+  --block-bg: rgb(255 248 240 / 90%);
+  --block-border: rgb(217 119 6 / 12%);
+  --accent: #d97706;
+  --accent-soft: rgb(217 119 6 / 10%);
+  --shadow: 0 2px 10px rgb(120 80 40 / 8%), 0 1px 2px rgb(120 80 40 / 5%);
+  --shadow-lift: 0 8px 22px rgb(120 80 40 / 12%);
+  --track: rgb(217 119 6 / 8%);
+  --r-rail: 18px;
+  --r-tile: 12px;
+  --r-block: 12px;
+  --r-card: 16px;
+}
