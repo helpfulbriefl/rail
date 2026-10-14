@@ -1,0 +1,30 @@
+W3C-CLOSEOUT continuation — rebuilt executable provenance
+==========================================================
+tested_source_commit : c3b9db11b1e4bc5091cbead8aa79a40c10531a26
+build_command        : npm run tauri build  (tsc -p . && vite build; cargo build --release, optimized)
+build_log            : .bro/exchange/W3C-CLOSEOUT/logs/tauri-build2.log
+exe_path_rel         : src-tauri/target/release/rail.exe
+exe_path_abs         : c:\Users\BazaCode\Desktop\cody-proj\win-utils\rail-publish\src-tauri\target\release\rail.exe
+exe_sha256           : e6e0bf48846844e25be8f86c284ba0600033c94c851223dcbb3b46b936697a2c
+exe_size_bytes       : 4441600
+availability         : locally built binary only; NOT uploaded to a GitHub release (no release artefact attached)
+historical_tag       : w3c-closeout-done remains at 9bb9788 (not moved); continuation tracked by w3c-closeout-cont-done
+
+gates (this continuation)
+-------------------------
+typecheck            : PASS (tsc -p .)
+stylelint            : PASS (no CSS changed)
+vite build           : PASS
+qa/visual.mjs        : PASS 48/48 scenes, incl. 6 new event-sequence scenes
+qa/storyboard.mjs    : PASS
+cargo test           : PASS 31/31
+cargo build --release: PASS
+
+event-sequence scenes (behavioural, not pixels)
+-----------------------------------------------
+seq-hover-cold-porcelain    PASS  rows appear while the pointer is already inside (empty frame never latches)
+seq-leave-focus-glass       PASS  pointer leaves while focus remains -> freeze held, disappeared app -> tombstone
+seq-tab-focus-studio        PASS  internal Tab between rows -> freeze held (not read as focus-leave)
+seq-all-vanish-aurora       PASS  all candidates vanish during freeze -> five frozen slots kept, no empty panel
+seq-loading-totals-glass    PASS  never-sampled frame -> footer placeholders, no fabricated zero totals
+seq-new-leader-porcelain    PASS  new top app outside interaction enters the live ranking
