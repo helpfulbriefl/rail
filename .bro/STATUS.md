@@ -1,7 +1,7 @@
 # Статус · rail-publish · BRO v3.0
-Обновлено 2026-10-14 22:19 · режим JOIN · волна W3B-FIX
+Обновлено 2026-10-14 23:45 · режим JOIN · волна W3C-CLOSEOUT
 
-▰▰▰▰▰▱▱▱ **2 из 3 · 67 %** · сейчас «W3B-FIX» · ход за 🧠 аналитик
+▰▰▰▰▰▱▱▱ **2 из 3 · 67 %** · сейчас «W3C-CLOSEOUT» · ход за 🧠 аналитик
 
 **Тебе:** напиши аналитику: BRO CHECK · **Дальше:** остановок больше нет
 
@@ -10,7 +10,7 @@ flowchart LR
   n0["✅ W1-RECON"]:::done
   n1["✅ W1B-BASELINE"]:::done
   n0 --> n1
-  n2["▶ W3B-FIX"]:::run
+  n2["▶ W3C-CLOSEOUT"]:::run
   n1 --> n2
   classDef done fill:#DCFCE7,stroke:#16A34A,color:#16181D
   classDef run fill:#E0E7FF,stroke:#4F46E5,color:#16181D

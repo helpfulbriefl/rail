@@ -2,9 +2,9 @@ window.BRO_STATE = {
     "project":  "rail-publish",
     "ver":  "v3.0",
     "mode":  "JOIN",
-    "updated":  "2026-10-14 22:19",
-    "wave":  "W3B-FIX",
-    "current":  "W3B-FIX",
+    "updated":  "2026-10-14 23:45",
+    "wave":  "W3C-CLOSEOUT",
+    "current":  "W3C-CLOSEOUT",
     "turn":  "analyst",
     "turn_text":  "🧠 аналитик",
     "todo":  "напиши аналитику: BRO CHECK",
@@ -27,8 +27,8 @@ window.BRO_STATE = {
                      "stop":  false
                  },
                  {
-                     "id":  "W3B-FIX",
-                     "title":  "W3B-FIX",
+                     "id":  "W3C-CLOSEOUT",
+                     "title":  "W3C-CLOSEOUT",
                      "status":  "run",
                      "stop":  false
                  }
