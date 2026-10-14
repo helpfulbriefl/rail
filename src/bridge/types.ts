@@ -62,7 +62,15 @@ export interface SysRt {
   memTotal: number;
 }
 
-/** One aggregated application in the system-wide top-5 monitor. */
+/** One process behind an aggregated row. `startTime` makes the identity
+ *  survive PID recycling: the close request is revalidated against it. */
+export interface SysProc {
+  pid: number;
+  /** whole seconds since the UNIX epoch (process creation time) */
+  startTime: number;
+}
+
+/** One aggregated application in the system-wide monitor. */
 export interface SysApp {
   /** full exe path, lower-case — the frozen identity */
   id: string;
@@ -73,6 +81,10 @@ export interface SysApp {
   mem: number;
   /** representative PID (lowest) for display only */
   pid: number;
+  /** every process behind this row — the close target set */
+  procs: SysProc[];
+  /** validated top-level windows this row can ask to close */
+  windows: number;
   /** false when the exe belongs to a system / critical process */
   closable: boolean;
 }
@@ -81,6 +93,24 @@ export interface RuntimePayload {
   items: Record<string, ItemRt>;
   sys: SysRt;
   sysTop: SysApp[];
+  /** unix seconds of the newest sample this frame reflects (0 = never) */
+  ts: number;
+  /** monotonic frame counter; duplicates (same ts) must not extend history */
+  seq: number;
+}
+
+/** Close request bound to the frozen snapshot identity, not a bare exe path. */
+export interface SysCloseReq {
+  id: string;
+  procs: SysProc[];
+}
+
+export interface SysCloseResult {
+  status: 'dispatched' | 'refused' | 'unavailable';
+  /** WM_CLOSE messages posted (not: processes confirmed exited) */
+  dispatched: number;
+  windows: number;
+  reason: string;
 }
 
 export interface RailCmd {

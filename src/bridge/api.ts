@@ -2,7 +2,7 @@
  * Single seam between UI and OS. UI never touches Tauri directly.
  * In a plain browser (design previews / visual QA) a mock backend is used.
  */
-import type { Config, DropEvent, FlyoutCmd, LaunchResult, RailCmd, Rect, RuntimePayload, Settings } from './types';
+import type { Config, DropEvent, FlyoutCmd, LaunchResult, RailCmd, Rect, RuntimePayload, Settings, SysCloseReq, SysCloseResult } from './types';
 import { mock } from './mock';
 
 type Unlisten = () => void;
@@ -27,7 +27,8 @@ export interface Api {
   /** Phase-0 telemetry sink; a no-op unless the backend runs with RAIL_DIAG=1. */
   diagLog(msg: string): void;
   showFlyout(req: { kind: 'info' | 'metrics' | 'sys'; id: string; width: number; height: number } & Rect): Promise<void>;
-  sysClose(exe: string): Promise<void>;
+  /** Close one snapshot-bound application row; resolves with the honest outcome. */
+  sysClose(req: SysCloseReq): Promise<SysCloseResult>;
   hideFlyout(): Promise<void>;
   flyoutHidden(seq: number): Promise<void>;
   openSettings(): Promise<void>;
@@ -41,6 +42,8 @@ export interface Api {
   onLaunch(cb: (r: LaunchResult) => void): Unlisten;
   onMenuClosed(cb: () => void): Unlisten;
   onDrop(cb: (e: DropEvent) => void): Unlisten;
+  /** Persistence failure surfaced by the backend (content-free message). */
+  onSaveError(cb: (msg: string) => void): Unlisten;
   startDrag(): void;
 }
 
@@ -83,7 +86,7 @@ async function tauriApi(): Promise<Api> {
     requestHide: () => invoke('request_hide'),
     railHidden: (seq) => invoke('rail_hidden', { seq }),
     showFlyout: (req) => invoke('show_flyout', { req }),
-    sysClose: (exe) => invoke('sys_close', { exe }),
+    sysClose: (req) => invoke('sys_close', { req }),
     hideFlyout: () => invoke('hide_flyout'),
     flyoutHidden: (seq) => invoke('flyout_hidden', { seq }),
     openSettings: () => invoke('open_settings'),
@@ -96,6 +99,7 @@ async function tauriApi(): Promise<Api> {
     onFlyout: (cb) => on('flyout', cb),
     onLaunch: (cb) => on('launch', cb),
     onMenuClosed: (cb) => on('menu-closed', cb),
+    onSaveError: (cb) => on('save-error', cb),
     onDrop: (cb) => {
       let un: Unlisten | null = null;
       let dead = false;

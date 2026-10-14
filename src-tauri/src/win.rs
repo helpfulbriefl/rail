@@ -6,7 +6,7 @@ use std::os::windows::ffi::OsStrExt;
 
 use base64::Engine;
 use windows::core::{Interface, BOOL, PCWSTR, PWSTR};
-use windows::Win32::Foundation::{CloseHandle, COLORREF, HWND, LPARAM, POINT, SIZE, WPARAM};
+use windows::Win32::Foundation::{CloseHandle, COLORREF, FILETIME, HWND, LPARAM, POINT, SIZE, WPARAM};
 use windows::Win32::Graphics::Dwm::{DwmGetWindowAttribute, DWMWA_CLOAKED};
 use windows::Win32::Graphics::Gdi::{
     CreateCompatibleDC, CreateRectRgn, DeleteDC, DeleteObject, GetDIBits, GetObjectW, SetWindowRgn,
@@ -17,7 +17,7 @@ use windows::Win32::System::Com::{
     COINIT_APARTMENTTHREADED, STGM_READ,
 };
 use windows::Win32::System::Threading::{
-    OpenProcess, QueryFullProcessImageNameW, PROCESS_NAME_WIN32,
+    GetProcessTimes, OpenProcess, QueryFullProcessImageNameW, PROCESS_NAME_WIN32,
     PROCESS_QUERY_LIMITED_INFORMATION,
 };
 use windows::Win32::UI::Input::KeyboardAndMouse::{GetAsyncKeyState, VK_LBUTTON};
@@ -106,6 +106,29 @@ pub fn process_path(pid: u32) -> Option<String> {
         let _ = CloseHandle(h);
         r.ok()?;
         Some(String::from_utf16_lossy(&buf[..len as usize]))
+    }
+}
+
+/// Process creation time as whole seconds since the UNIX epoch.
+///
+/// A PID is recycled by Windows almost immediately, so "the process with this
+/// PID still exists" proves nothing about identity. PID **and** start time does:
+/// the mini monitor revalidates both before it asks a window to close, which is
+/// what stops a rank refresh from redirecting a pending X at a brand-new,
+/// unrelated instance that happens to have inherited the PID.
+pub fn process_start_time(pid: u32) -> Option<u64> {
+    unsafe {
+        let h = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid).ok()?;
+        let mut created = FILETIME::default();
+        let mut exited = FILETIME::default();
+        let mut kernel = FILETIME::default();
+        let mut user = FILETIME::default();
+        let ok = GetProcessTimes(h, &mut created, &mut exited, &mut kernel, &mut user);
+        let _ = CloseHandle(h);
+        ok.ok()?;
+        let raw = ((created.dwHighDateTime as u64) << 32) | created.dwLowDateTime as u64;
+        // 100 ns intervals since 1601-01-01 -> seconds since 1970-01-01
+        Some((raw / 10_000_000).saturating_sub(11_644_473_600))
     }
 }
 

@@ -1,6 +1,6 @@
 /** Browser-only backend used for design previews and automated visual QA. */
 import type { Api } from './api';
-import type { Config, Item, ItemRt, RuntimePayload, Settings, Theme, Side, SysApp } from './types';
+import type { Config, Item, ItemRt, RuntimePayload, Settings, Side, SysApp, SysCloseResult, Theme } from './types';
 
 const q = new URLSearchParams(typeof location !== 'undefined' ? location.search : '');
 
@@ -81,18 +81,27 @@ export function mock(): Api {
         out[it.id] = { ...z, ...b, cpu: (b.cpu ?? 0) * (0.6 + wob), read: it.id === 'm1' && t % 4 === 0 ? 3.2e6 : 12e3 * wob, write: 4e3 * wob, uptime: (b.uptime ?? 0) + t } as ItemRt;
       } else out[it.id] = z;
     }
-    const sysTop: SysApp[] = [
-      { id: 'c:\\program files\\chrome\\chrome.exe', name: 'chrome.exe', cpu: 8.2, mem: 2.3e9, pid: 4200, closable: true },
-      { id: 'c:\\program files\\code\\code.exe', name: 'code.exe', cpu: 3.1, mem: 812e6, pid: 5100, closable: true },
-      { id: 'c:\\program files\\steam\\steam.exe', name: 'steam.exe', cpu: 0.4, mem: 186e6, pid: 6200, closable: true },
-      { id: 'c:\\windows\\system32\\svchost.exe', name: 'svchost.exe', cpu: 2.8, mem: 42e6, pid: 800, closable: false },
-      { id: 'c:\\program files\\telegram\\telegram.exe', name: 'telegram.exe', cpu: 0.1, mem: 95e6, pid: 7300, closable: true },
+    const proc = (pid: number, ago: number) => ({ pid, startTime: Math.floor(Date.now() / 1000) - ago });
+    const sysTopAll: SysApp[] = [
+      { id: 'c:\\program files\\chrome\\chrome.exe', name: 'chrome.exe', cpu: 8.2, mem: 2.3e9, pid: 4200, procs: [proc(4200, 13400), proc(4201, 13390), proc(4260, 8000)], windows: 3, closable: true },
+      { id: 'c:\\program files\\code\\code.exe', name: 'code.exe', cpu: 3.1, mem: 812e6, pid: 5100, procs: [proc(5100, 5260)], windows: 1, closable: true },
+      // deliberately CPU-heavy, RAM-light: proves the CPU tab is a real
+      // system-wide ranking, not a reorder of the RAM five
+      { id: 'c:\\tools\\compress\\compress.exe', name: 'compress.exe', cpu: 41.5, mem: 61e6, pid: 9100, procs: [proc(9100, 640)], windows: 0, closable: true },
+      { id: 'c:\\program files\\steam\\steam.exe', name: 'steam.exe', cpu: 0.4, mem: 186e6, pid: 6200, procs: [proc(6200, 40100)], windows: 1, closable: true },
+      { id: 'c:\\windows\\system32\\svchost.exe', name: 'svchost.exe', cpu: 2.8, mem: 42e6, pid: 800, procs: [proc(800, 90000)], windows: 0, closable: false },
+      { id: 'c:\\program files\\telegram\\telegram.exe', name: 'telegram.exe', cpu: 0.1, mem: 95e6, pid: 7300, procs: [proc(7300, 1200)], windows: 1, closable: true },
     ];
-    return { items: out, sys: { cpu: 18 + Math.sin(t / 3) * 6, memUsed: 11.2e9, memTotal: 31.9e9 }, sysTop };
+    const sysTop = q.get('sysmon') === 'empty' ? [] : sysTopAll;
+    // `stale=1` freezes the sample stamp in the past: carry-forward frames must
+    // be visibly marked stale, never silently presented as live data
+    const ts = q.get('stale') === '1' ? Math.floor(Date.now() / 1000) - 60 : Math.floor(Date.now() / 1000);
+    return { items: out, sys: { cpu: 18 + Math.sin(t / 3) * 6, memUsed: 11.2e9, memTotal: 31.9e9 }, sysTop, ts, seq: t };
   };
   if (typeof window !== 'undefined') {
     setInterval(() => emit('runtime', rt()), 1000);
     setTimeout(() => emit('runtime', rt()), 30);
+    if (q.get('savefail') === '1') setTimeout(() => emit('save-error', 'диск недоступен'), 120);
     if (label === 'rail' && q.get('hidden') !== '1') setTimeout(() => emit('rail', { action: 'show', seq: 1 }), 60);
     if (label === 'flyout') setTimeout(() => emit('flyout', { action: 'show', seq: 1, kind: q.get('kind') ?? 'metrics', id: q.get('id') ?? 'm1', side: settings.side }), 60);
   }
@@ -139,9 +148,17 @@ export function mock(): Api {
     railHidden: async () => {
       setTimeout(() => emit('rail', { action: 'show', seq: 2 }), 1200);
     },
-    showFlyout: async () => {},
-    sysClose: async () => {},
-    hideFlyout: async () => {},
+    showFlyout: async (req) => emit('flyout', { action: 'show', seq: Date.now() % 100000, kind: req.kind, id: req.id, side: settings.side }),
+    sysClose: async (req): Promise<SysCloseResult> => {
+      // deterministic QA: `close=refused|unavailable` forces the outcome,
+      // protected rows are always refused, everything else dispatches
+      const forced = q.get('close');
+      if (req.id.includes('svchost')) return { status: 'refused', dispatched: 0, windows: 0, reason: 'системный или защищённый процесс' };
+      if (forced === 'refused') return { status: 'refused', dispatched: 0, windows: 0, reason: 'системный или защищённый процесс' };
+      if (forced === 'unavailable') return { status: 'unavailable', dispatched: 0, windows: 0, reason: 'приложение закрыто или перезапущено' };
+      return { status: 'dispatched', dispatched: 2, windows: 2, reason: 'отправлен запрос на закрытие' };
+    },
+    hideFlyout: async () => emit('flyout', { action: 'hide', seq: Date.now() % 100000 }),
     flyoutHidden: async () => {},
     openSettings: async () => {},
     closeSettings: async () => {},
@@ -154,6 +171,7 @@ export function mock(): Api {
     onLaunch: (cb) => on('launch', cb),
     onMenuClosed: (cb) => on('menu-closed', cb),
     onDrop: (cb) => on('drop', cb),
+    onSaveError: (cb) => on('save-error', cb),
     startDrag: () => {},
   };
   // Browser-side harness for the external-drop path: the real OLE events only

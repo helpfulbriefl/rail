@@ -1240,11 +1240,63 @@ img {
   color: var(--text);
 }
 
+.sysmon-sub {
+  overflow: hidden;
+  color: var(--faint);
+  font-size: var(--fs-micro);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
 .sysmon-val {
+  flex: none;
   font-family: var(--font-num);
   font-size: var(--fs-micro);
   color: var(--muted);
   font-variant-numeric: tabular-nums;
+}
+
+.sysmon-val small {
+  margin-left: 1px;
+  color: var(--faint);
+}
+
+.sysmon-val.on {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.sysmon-msg {
+  flex: none;
+  max-width: 76px;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: var(--fs-micro);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.sysmon-row[data-closing] {
+  opacity: 0.75;
+}
+
+.sysmon-stale {
+  padding: 2px var(--s-2);
+  color: var(--muted);
+  font-size: var(--fs-micro);
+  font-style: italic;
+  text-align: center;
+}
+
+.save-warn {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  color: var(--lamp-hung);
+  cursor: help;
 }
 
 .sysmon-close {
@@ -1270,9 +1322,22 @@ img {
 }
 
 .sysmon-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-2);
   padding-top: 4px;
   border-top: 1px solid var(--hairline);
   font-family: var(--font-num);
   font-size: var(--fs-micro);
   color: var(--faint);
+}
+
+.sysmon-tot {
+  white-space: nowrap;
+}
+
+.sysmon-charts {
+  display: inline-flex;
+  gap: 4px;
 }

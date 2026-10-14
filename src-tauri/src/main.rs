@@ -1,8 +1,8 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
-mod config;
-mod core;
 #[macro_use]
 mod diag;
+mod config;
+mod core;
 mod tracker;
 mod win;
 
@@ -22,8 +22,7 @@ use tauri_plugin_autostart::ManagerExt;
 /// reserved a 168 px strip: the capsule looked huge and the transparent margin
 /// swallowed clicks. Now it is derived from the actual content:
 ///   tile + chrome (head row, separators, meters) + drop shadow margin.
-fn rail_cross(core: &Shared, vertical: bool) -> f64 {
-    let s = core.cfg.lock().unwrap_or_else(|e| e.into_inner()).settings.clone();
+fn rail_cross(s: &Settings, vertical: bool) -> f64 {
     let (mul, pad, chrome, meters) = match s.rail_scale.as_str() {
         "mini" => (0.56, 10.0, 26.0, 0.0),
         "compact" => (0.72, 14.0, 34.0, 26.0),
@@ -61,8 +60,7 @@ fn rail_cross(core: &Shared, vertical: bool) -> f64 {
 /// Derived from the icon size instead of a flat 26 px: at `compact` (S = 26) a
 /// 26 px pad on *each* side was wider than the capsule itself, which is most of
 /// why the window measured 114 px for a rail that only renders 41 px wide.
-fn drag_pad(core: &Shared) -> f64 {
-    let s = core.cfg.lock().unwrap_or_else(|e| e.into_inner()).settings.clone();
+fn drag_pad(s: &Settings) -> f64 {
     let mul = match s.rail_scale.as_str() {
         "mini" => 0.56,
         "compact" => 0.72,
@@ -136,7 +134,7 @@ fn apply_region(app: &AppHandle, core: &Shared, force: bool) {
         return;
     }
     // breathing room for magnified / dragged tiles and the capsule shadow
-    let target = want.grow(drag_pad(core));
+    let target = want.grow(drag_pad(&core.cfg.lock().unwrap_or_else(|e| e.into_inner()).settings));
     if !force && !open_now && target.near(&hit) {
         diag::region_skipped("deduped");
         return;
@@ -164,7 +162,7 @@ pub fn show_rail(app: &AppHandle, core: &Shared) {
         .map(|m| m.scale_factor())
         .unwrap_or(1.0);
     let vertical = side == "left" || side == "right";
-    let cross = (rail_cross(core, vertical) * scale).round();
+    let cross = (rail_cross(&core.cfg.lock().unwrap_or_else(|e| e.into_inner()).settings, vertical) * scale).round();
     // Only reserve as much of the edge as the capsule can actually use. The old
     // build always took 94% of the screen, so the invisible window covered the
     // whole side and ate clicks far away from the visible rail.
@@ -180,7 +178,7 @@ pub fn show_rail(app: &AppHandle, core: &Shared) {
     let step = (s_icon * mul).round() + 8.0;
     let head = 3.0 * (26.0 * mul + 4.0) + 60.0; // buttons + separators
     let feet = if s_met { 56.0 * mul } else { 0.0 };
-    let need = (n * step + head + feet + drag_pad(core) * 2.0 + 40.0) * scale;
+    let need = (n * step + head + feet + drag_pad(&core.cfg.lock().unwrap_or_else(|e| e.into_inner()).settings) * 2.0 + 40.0) * scale;
     let avail = (if vertical { work.h } else { work.w }) * 0.96;
     let along = need.min(avail).max(220.0 * scale).round();
     let (x, y, ww, hh) = match side.as_str() {
@@ -232,8 +230,14 @@ fn toggle_rail(app: &AppHandle, core: &Shared) {
     }
 }
 
-fn hide_flyout_inner(app: &AppHandle, core: &Shared) {
-    let seq = core.rt.lock().unwrap_or_else(|e| e.into_inner()).flyout_seq;
+pub(crate) fn hide_flyout_inner(app: &AppHandle, core: &Shared) {
+    let seq = {
+        let mut rt = core.rt.lock().unwrap_or_else(|e| e.into_inner());
+        rt.flyout_open = false;
+        rt.flyout_rect = None;
+        rt.flyout_away = None;
+        rt.flyout_seq
+    };
     let _ = app.emit_to("flyout", "flyout", serde_json::json!({"action": "hide", "seq": seq}));
 }
 
@@ -367,6 +371,34 @@ fn snapshot(core: State<Shared>) -> Snapshot {
     Snapshot { config: core.cfg.lock().unwrap_or_else(|e| e.into_inner()).clone(), visible: core.rt.lock().unwrap_or_else(|e| e.into_inner()).visible }
 }
 
+/// Paths that would really be inserted.
+///
+/// De-duplicated within the drop (Explorer hands the same file twice when it is
+/// both selected and dragged) *and* against what is already on the rail, using
+/// the same full-path normalization the tracker matches processes with.
+///
+/// The old code computed `added` from "did the drop contain any new path", then
+/// skipped the already-present ones inside the insert loop — so dropping a file
+/// that was already pinned still saved the config, re-emitted `config` and
+/// re-fitted the window for nothing. Duplicate-only input now yields an empty
+/// plan and is a complete no-op.
+pub fn plan_inserts(items: &[Item], paths: &[String]) -> Vec<String> {
+    let mut seen: Vec<String> = Vec::new();
+    let mut out: Vec<String> = Vec::new();
+    for p in paths {
+        let k = crate::core::norm_path(p);
+        if k.is_empty() || seen.contains(&k) {
+            continue;
+        }
+        seen.push(k.clone());
+        if items.iter().any(|x| crate::core::norm_path(&x.launch_path) == k) {
+            continue;
+        }
+        out.push(p.clone());
+    }
+    out
+}
+
 #[tauri::command]
 fn add_paths(app: AppHandle, core: State<Shared>, paths: Vec<String>, index: Option<usize>) {
     diag!("DROPPED paths={} index={index:?} first={:?}", paths.len(), paths.first());
@@ -375,39 +407,31 @@ fn add_paths(app: AppHandle, core: State<Shared>, paths: Vec<String>, index: Opt
         let mut rt = core.rt.lock().unwrap_or_else(|e| e.into_inner());
         rt.drag_until = None;
     }
-    // Explorer hands the same file twice when it is both selected and dragged.
-    let mut seen: Vec<String> = Vec::new();
-    let new: Vec<Item> = paths
-        .iter()
-        .filter(|p| {
-            let k = p.to_lowercase();
-            if seen.contains(&k) || !std::path::Path::new(p.as_str()).exists() {
-                return false;
-            }
-            seen.push(k);
-            true
-        })
-        .map(|p| make_item(p))
-        .collect();
-    let added = !new.is_empty();
+    let existing: Vec<String> = paths.iter().filter(|p| std::path::Path::new(p.as_str()).exists()).cloned().collect();
+    let plan = {
+        let c = core.cfg.lock().unwrap_or_else(|e| e.into_inner());
+        plan_inserts(&c.items, &existing)
+    };
+    // Only a real insertion is allowed to touch the config, the window or the
+    // region — a duplicate drop must be indistinguishable from a no-op.
+    if plan.is_empty() {
+        diag!("DROPPED nothing new ({} duplicate/already-present)", paths.len());
+        return;
+    }
+    let new: Vec<Item> = plan.iter().map(|p| make_item(p)).collect();
     {
         let mut c = core.cfg.lock().unwrap_or_else(|e| e.into_inner());
         let mut at = index.unwrap_or(c.items.len()).min(c.items.len());
         for it in new {
-            if c.items.iter().any(|x| x.launch_path.eq_ignore_ascii_case(&it.launch_path)) {
-                continue;
-            }
             c.items.insert(at, it);
             at += 1;
         }
     }
-    if added {
-        core.save();
-        emit_config(&app, &core);
-        // the list just grew along the main axis — re-fit the window
-        if core.rt.lock().unwrap_or_else(|e| e.into_inner()).visible {
-            show_rail(&app, &core);
-        }
+    core.save();
+    emit_config(&app, &core);
+    // the list just grew along the main axis — re-fit the window
+    if core.rt.lock().unwrap_or_else(|e| e.into_inner()).visible {
+        show_rail(&app, &core);
     }
     apply_region(&app, core.inner(), true);
 }
@@ -426,15 +450,18 @@ fn pick_files(app: AppHandle, core: State<Shared>) {
         .pick_files(move |picked| {
             let Some(files) = picked else { return };
             let paths: Vec<String> = files.iter().filter_map(|f| f.as_path().map(|p| p.to_string_lossy().to_string())).collect();
-            if paths.is_empty() { return; }
-            let new: Vec<Item> = paths.iter().map(|p| make_item(p)).collect();
+            let plan = {
+                let c = core.cfg.lock().unwrap_or_else(|e| e.into_inner());
+                plan_inserts(&c.items, &paths)
+            };
+            if plan.is_empty() {
+                return;
+            }
+            let new: Vec<Item> = plan.iter().map(|p| make_item(p)).collect();
             {
                 let mut c = core.cfg.lock().unwrap_or_else(|e| e.into_inner());
                 let mut at = c.items.len();
                 for it in new {
-                    if c.items.iter().any(|x| x.launch_path.eq_ignore_ascii_case(&it.launch_path)) {
-                        continue;
-                    }
                     c.items.insert(at, it);
                     at += 1;
                 }
@@ -500,28 +527,85 @@ fn close_windows(core: State<Shared>, id: String) {
     }
 }
 
-/// Safe system-app close: send WM_CLOSE to every top-level window whose exe
-/// matches the given path. Never force-kills — the app can show an
-/// unsaved-work dialog. Skips Rail's own windows and system processes.
+/// What the UI asks to close: the frozen row identity, not a bare exe string.
+///
+/// `id` is the normalized full exe path and `procs` is the exact process set the
+/// row was built from. Both are re-validated against the live process table
+/// before anything is sent, so a stale row can never redirect the request at a
+/// newly created, unrelated instance that inherited a recycled PID.
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct SysCloseReq {
+    id: String,
+    procs: Vec<tracker::SysProc>,
+}
+
+/// Honest outcome of a close request.
+///
+/// `dispatched` counts WM_CLOSE messages that were *posted* — it deliberately
+/// does not claim the application exited: an unsaved-work dialog, a hung app or
+/// an access-denied target all leave the process alive, and the UI must be able
+/// to say so.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct SysCloseResult {
+    /// "dispatched" | "refused" | "unavailable"
+    status: &'static str,
+    /// windows we posted WM_CLOSE to
+    dispatched: usize,
+    /// validated top-level windows that existed for this identity
+    windows: usize,
+    /// short, content-free explanation for the Owner
+    reason: String,
+}
+
+/// Safe system-app close.
+///
+/// Sends WM_CLOSE — never TerminateProcess — to the validated top-level windows
+/// of one frozen application identity, so every target keeps its own
+/// unsaved-work prompt. Refuses Rail's own exe and protected / shell processes
+/// by explicit identity, and refuses anything it cannot revalidate.
 #[tauri::command]
-fn sys_close(core: State<Shared>, exe: String) {
-    let exe_lower = exe.to_lowercase();
+fn sys_close(core: State<Shared>, req: SysCloseReq) -> SysCloseResult {
+    let id = crate::core::norm_path(&req.id);
+    let own_exe = std::env::current_exe().map(|p| p.to_string_lossy().to_string()).unwrap_or_default();
     let own: Vec<isize> = core.rt.lock().unwrap_or_else(|e| e.into_inner()).own.clone();
-    let wins = win::enum_windows();
-    for w in &wins {
-        if own.contains(&w.hwnd) {
-            continue;
-        }
-        let path = win::process_path(w.pid).map(|p| p.to_lowercase()).unwrap_or_default();
-        if path != exe_lower {
-            continue;
-        }
-        // never close system / critical processes
-        if path.contains("system32") || path.contains("drvfail") || path.contains("svchost") {
-            continue;
-        }
-        win::close(w.hwnd);
+
+    if id.is_empty() {
+        return SysCloseResult { status: "unavailable", dispatched: 0, windows: 0, reason: "нет идентификатора приложения".into() };
     }
+    if tracker::is_protected_exe(&id, &own_exe) {
+        return SysCloseResult { status: "refused", dispatched: 0, windows: 0, reason: "системный или защищённый процесс".into() };
+    }
+    if req.procs.is_empty() {
+        return SysCloseResult { status: "unavailable", dispatched: 0, windows: 0, reason: "нет данных о процессе".into() };
+    }
+
+    // Revalidate every PID the UI handed us: same executable *and* same start
+    // time. A recycled PID or a restarted app fails here and is dropped.
+    let mut valid: Vec<u32> = Vec::new();
+    for p in &req.procs {
+        let live = win::process_path(p.pid).map(|x| crate::core::norm_path(&x));
+        let started = win::process_start_time(p.pid);
+        if live.as_deref() == Some(id.as_str()) && started == Some(p.start_time) {
+            valid.push(p.pid);
+        }
+    }
+    if valid.is_empty() {
+        return SysCloseResult { status: "unavailable", dispatched: 0, windows: 0, reason: "приложение закрыто или перезапущено".into() };
+    }
+
+    let wins: Vec<win::AppWindow> = win::enum_windows().into_iter().filter(|w| valid.contains(&w.pid) && !own.contains(&w.hwnd)).collect();
+    if wins.is_empty() {
+        return SysCloseResult { status: "unavailable", dispatched: 0, windows: 0, reason: "нет окна, которое можно закрыть".into() };
+    }
+    let mut dispatched = 0;
+    for w in &wins {
+        win::close(w.hwnd);
+        dispatched += 1;
+    }
+    diag!("SYSCLOSE id={id} pids={} dispatched={dispatched}", valid.len());
+    SysCloseResult { status: "dispatched", dispatched, windows: wins.len(), reason: "отправлен запрос на закрытие".into() }
 }
 
 #[tauri::command]
@@ -665,6 +749,44 @@ struct FlyoutReq {
     height: f64,
 }
 
+/// Places the flyout popup, clamping **size and position** so the whole card
+/// always fits inside the work area.
+///
+/// The old code only clamped position and could panic in release builds when the
+/// requested size exceeded the work area (`clamp` asserts `min <= max`); on a
+/// small monitor the popup was also simply cut off. When the range collapses
+/// (popup larger than the available span) `hi` is pulled up to `lo`, so the
+/// popup is at least fully on-screen and never larger than the work area.
+pub fn place_flyout(
+    side: &str,
+    work: Rect,
+    ax: f64,
+    ay: f64,
+    aw: f64,
+    ah: f64,
+    fw: f64,
+    fh: f64,
+    gap: f64,
+    margin: f64,
+) -> (f64, f64, f64, f64) {
+    let max_w = (work.w - 2.0 * margin).max(64.0);
+    let max_h = (work.h - 2.0 * margin).max(64.0);
+    let (fw, fh) = (fw.min(max_w), fh.min(max_h));
+    let (mut x, mut y) = match side {
+        "left" => (ax + aw + gap, ay + ah / 2.0 - fh / 2.0),
+        "top" => (ax + aw / 2.0 - fw / 2.0, ay + ah + gap),
+        "bottom" => (ax + aw / 2.0 - fw / 2.0, ay - gap - fh),
+        _ => (ax - gap - fw, ay + ah / 2.0 - fh / 2.0),
+    };
+    let lo_x = work.x + margin;
+    let hi_x = (work.x + work.w - margin - fw).max(lo_x);
+    let lo_y = work.y + margin;
+    let hi_y = (work.y + work.h - margin - fh).max(lo_y);
+    x = x.clamp(lo_x, hi_x);
+    y = y.clamp(lo_y, hi_y);
+    (x, y, fw, fh)
+}
+
 #[tauri::command]
 fn show_flyout(app: AppHandle, core: State<Shared>, req: FlyoutReq) {
     let Some(f) = app.get_webview_window("flyout") else { return };
@@ -672,25 +794,29 @@ fn show_flyout(app: AppHandle, core: State<Shared>, req: FlyoutReq) {
     let (seq, ox, oy, s, work) = {
         let mut rt = core.rt.lock().unwrap_or_else(|e| e.into_inner());
         rt.flyout_seq += 1;
+        rt.flyout_open = true;
         (rt.flyout_seq, rt.rail_origin.0, rt.rail_origin.1, rt.rail_scale, rt.work)
     };
     let (ax, ay, aw, ah) = (ox + req.x * s, oy + req.y * s, req.w * s, req.h * s);
-    let (fw, fh) = (req.width * s, req.height * s);
-    let gap = 14.0 * s;
-    let (mut x, mut y) = match side.as_str() {
-        "left" => (ax + aw + gap, ay + ah / 2.0 - fh / 2.0),
-        "top" => (ax + aw / 2.0 - fw / 2.0, ay + ah + gap),
-        "bottom" => (ax + aw / 2.0 - fw / 2.0, ay - gap - fh),
-        _ => (ax - gap - fw, ay + ah / 2.0 - fh / 2.0),
-    };
-    x = x.clamp(work.x + 4.0, work.x + work.w - fw - 4.0);
-    y = y.clamp(work.y + 4.0, work.y + work.h - fh - 4.0);
+    let (x, y, fw, fh) = place_flyout(&side, work, ax, ay, aw, ah, req.width * s, req.height * s, 14.0 * s, 4.0 * s);
+    // the popup's own rect becomes part of the "pointer still engaged" zone, so
+    // crossing the gap and resting on the monitor does not dismiss it
+    {
+        let mut rt = core.rt.lock().unwrap_or_else(|e| e.into_inner());
+        rt.flyout_rect = Some(Rect { x, y, w: fw, h: fh });
+        rt.flyout_away = None;
+    }
     let _ = f.set_size(PhysicalSize::new(fw as u32, fh as u32));
     let _ = f.set_position(PhysicalPosition::new(x as i32, y as i32));
+    let kind = req.kind.clone();
     let _ = app.emit_to("flyout", "flyout", serde_json::json!({"action": "show", "seq": seq, "kind": req.kind, "id": req.id, "side": side}));
     let _ = f.show();
     let _ = f.set_always_on_top(true);
-    win::set_click_through(hwnd_of(&f), true);
+    // The item popup carries the real buttons ("Открыть", "Показать в
+    // проводнике", the X) and must receive clicks; only the system monitor
+    // stays click-through. The old build made *every* flyout transparent, so
+    // nothing inside it was clickable.
+    win::set_click_through(hwnd_of(&f), kind == "sys");
 }
 
 #[tauri::command]
@@ -700,7 +826,15 @@ fn hide_flyout(app: AppHandle, core: State<Shared>) {
 
 #[tauri::command]
 fn flyout_hidden(app: AppHandle, core: State<Shared>, seq: u64) {
-    if core.rt.lock().unwrap_or_else(|e| e.into_inner()).flyout_seq == seq {
+    let same = {
+        let mut rt = core.rt.lock().unwrap_or_else(|e| e.into_inner());
+        let same = rt.flyout_seq == seq;
+        if same {
+            rt.flyout_open = false;
+        }
+        same
+    };
+    if same {
         if let Some(f) = app.get_webview_window("flyout") {
             let _ = f.hide();
         }
@@ -724,12 +858,21 @@ fn close_settings(app: AppHandle) {
     }
 }
 
-#[tauri::command]
-fn quit(app: AppHandle) {
+/// Single shutdown path for every exit route (command, tray, RunEvent).
+/// Flushes the newest config state before the process goes away.
+fn shutdown(app: &AppHandle, core: &Shared) {
     // last line of the diagnostic run: how often the region was actually
     // (re)installed vs. skipped, which is the H-2/H-3 discriminator
     diag::summary();
+    if let Err(e) = core.flush() {
+        diag!("SAVE    shutdown flush failed: {e}");
+    }
     app.exit(0);
+}
+
+#[tauri::command]
+fn quit(app: AppHandle, core: State<Shared>) {
+    shutdown(&app, &core);
 }
 
 // ---------------------------------------------------------------- tray
@@ -737,6 +880,7 @@ fn quit(app: AppHandle) {
 fn build_tray_menu(app: &AppHandle, core: &Shared) -> tauri::Result<Menu<tauri::Wry>> {
     let s = core.cfg.lock().unwrap_or_else(|e| e.into_inner()).settings.clone();
     let show = MenuItem::with_id(app, "tray:show", "Показать панель", true, None::<&str>)?;
+    let hide = MenuItem::with_id(app, "tray:hide", "Скрыть панель", true, None::<&str>)?;
     let pin = CheckMenuItem::with_id(app, "tray:pin", "Закрепить панель", true, s.pinned, None::<&str>)?;
     let themes = [
         ("classic-light", "Классика · светлая"),
@@ -764,7 +908,7 @@ fn build_tray_menu(app: &AppHandle, core: &Shared) -> tauri::Result<Menu<tauri::
     let sep = PredefinedMenuItem::separator(app)?;
     let sep2 = PredefinedMenuItem::separator(app)?;
     let quit = MenuItem::with_id(app, "tray:quit", "Выход", true, None::<&str>)?;
-    Menu::with_items(app, &[&show, &pin, &sep, &theme, &side, &auto, &settings, &sep2, &quit])
+    Menu::with_items(app, &[&show, &hide, &pin, &sep, &theme, &side, &auto, &settings, &sep2, &quit])
 }
 
 fn rebuild_tray_menu(app: &AppHandle, core: &Shared) {
@@ -800,10 +944,11 @@ fn on_menu(app: &AppHandle, ev: MenuEvent) {
     }
     match id {
         "tray:show" => show_rail(app, &core),
+        "tray:hide" => request_hide_inner(app, &core),
         "tray:pin" => patch_settings(app, &core, |s| s.pinned = !s.pinned),
         "tray:autostart" => patch_settings(app, &core, |s| s.autostart = !s.autostart),
         "tray:settings" => open_settings(app.clone()),
-        "tray:quit" => app.exit(0),
+        "tray:quit" => shutdown(app, &core),
         x if x.starts_with("tray:theme:") => {
             let t = x["tray:theme:".len()..].to_string();
             patch_settings(app, &core, |s| s.theme = t)
@@ -825,8 +970,9 @@ fn main() {
     }));
     let core = core::Core::new();
     let (tx, rx) = mpsc::channel::<(String, bool)>();
+    let core_exit = core.clone();
 
-    tauri::Builder::default()
+    let app = tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, _, _| {
             let core = app.state::<Shared>().inner().clone();
             show_rail(app, &core);
@@ -904,6 +1050,106 @@ fn main() {
             }
             Ok(())
         })
-        .run(tauri::generate_context!())
+        .build(tauri::generate_context!())
         .expect("error while running Rail");
+
+    // Safety net for every exit route (taskbar kill, RunEvent, exit(0) from a
+    // command is handled by `shutdown` itself): the newest state must reach the
+    // disk even if the quit command never ran.
+    app.run(move |_app, ev| {
+        if let tauri::RunEvent::ExitRequested { .. } = ev {
+            let _ = core_exit.flush();
+        }
+    });
+}
+
+// ---------------------------------------------------------------- tests
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn settings(scale: &str) -> Settings {
+        Settings {
+            rail_scale: scale.into(),
+            icon_size: 48,
+            ..Default::default()
+        }
+    }
+
+    fn item(path: &str) -> Item {
+        Item {
+            id: format!("i{}", path),
+            name: path.to_string(),
+            launch_path: path.to_string(),
+            kind: "app".into(),
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn rail_cross_is_derived_from_scale_not_hard_coded() {
+        let s = settings("mini");
+        let v = rail_cross(&s, true);
+        let h = rail_cross(&s, false);
+        assert!(v > 0.0 && h > 0.0);
+        assert!(v.is_finite() && h.is_finite());
+        // "mini" must not reserve the full default strip
+        let m = settings("compact");
+        let d = settings("default");
+        assert!(rail_cross(&s, true) < rail_cross(&m, true));
+        assert!(rail_cross(&m, true) < rail_cross(&d, true));
+    }
+
+    #[test]
+    fn drag_pad_grows_with_scale() {
+        assert!(drag_pad(&settings("mini")) < drag_pad(&settings("compact")));
+        assert!(drag_pad(&settings("compact")) < drag_pad(&settings("default")));
+    }
+
+    #[test]
+    fn flyout_fits_inside_the_work_area_on_every_side() {
+        let work = Rect { x: 0.0, y: 0.0, w: 1920.0, h: 1080.0 };
+        for side in ["left", "right", "top", "bottom"] {
+            // anchor near the outer screen edge, popup wants to hang off-screen
+            let (x, y, w, h) = place_flyout(side, work, 1900.0, 1070.0, 40.0, 40.0, 420.0, 300.0, 14.0, 4.0);
+            assert!(x >= work.x, "{side}: x {x}");
+            assert!(y >= work.y, "{side}: y {y}");
+            assert!(x + w <= work.x + work.w, "{side}: right {x}+{w}");
+            assert!(y + h <= work.y + work.h, "{side}: bottom {y}+{h}");
+        }
+    }
+
+    #[test]
+    fn oversized_flyout_is_clamped_in_size_and_never_panics() {
+        // work area smaller than the requested popup: old code hit
+        // `clamp(lo, hi)` with hi < lo (panic in debug / garbage in release)
+        let work = Rect { x: 0.0, y: 0.0, w: 300.0, h: 200.0 };
+        let (x, y, w, h) = place_flyout("right", work, 280.0, 180.0, 20.0, 20.0, 800.0, 600.0, 14.0, 4.0);
+        assert!(w <= work.w);
+        assert!(h <= work.h);
+        assert!(x >= work.x && x + w <= work.x + work.w + 0.001);
+        assert!(y >= work.y && y + h <= work.y + work.h + 0.001);
+    }
+
+    #[test]
+    fn duplicate_only_drop_changes_nothing() {
+        let items = vec![item(r"C:\Apps\a.exe")];
+        let plan = plan_inserts(&items, &[r"c:\apps\A.EXE".into()]);
+        assert!(plan.is_empty());
+    }
+
+    #[test]
+    fn mixed_drop_only_plans_the_new_paths() {
+        let items = vec![item(r"C:\Apps\a.exe")];
+        let plan = plan_inserts(&items, &[r"C:\Apps\a.exe".into(), r"C:\Apps\b.exe".into(), r"C:\Apps\b.exe".into()]);
+        assert_eq!(plan, vec![r"C:\Apps\b.exe".to_string()]);
+    }
+
+    #[test]
+    fn same_basename_different_directory_is_not_a_duplicate() {
+        let items = vec![item(r"C:\Apps\a\tool.exe")];
+        let plan = plan_inserts(&items, &[r"D:\Other\tool.exe".into()]);
+        assert_eq!(plan.len(), 1);
+    }
 }

@@ -1,5 +1,5 @@
 import { AnimatePresence, motion, Reorder, useMotionValue, useMotionValueEvent, useSpring, type MotionValue } from 'motion/react';
-import { Pin, Plus, SlidersHorizontal } from 'lucide-react';
+import { AlertTriangle, Pin, Plus, SlidersHorizontal } from 'lucide-react';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { isTauri } from '../bridge/api';
 import { SCALE_MUL } from '../bridge/types';
@@ -14,7 +14,7 @@ const SHOW = { type: 'spring', stiffness: 420, damping: 34, mass: 0.8 } as const
 const LEAVE_GRACE_MS = 220;
 
 export function Rail() {
-  const { api, config, rt } = useApp();
+  const { api, config, rt, saveError } = useApp();
   const s = config.settings;
   const side = s.side;
   const vertical = side === 'left' || side === 'right';
@@ -90,10 +90,15 @@ export function Rail() {
   }, [api, dragAlive]);
 
   useEffect(() => {
-    const k = (e: KeyboardEvent) => e.key === 'Escape' && void api.requestHide();
+    // Escape closes the popup first; a second press hides the rail itself.
+    const k = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      if (flyoutOpen) void api.hideFlyout();
+      else void api.requestHide();
+    };
     window.addEventListener('keydown', k);
     return () => window.removeEventListener('keydown', k);
-  }, [api]);
+  }, [api, flyoutOpen]);
 
   // ---------- order (local while dragging, persisted on drop)
   const ids = useMemo(() => config.items.map((i) => i.id), [config.items]);
@@ -145,6 +150,23 @@ export function Rail() {
     pointer.set(vertical ? e.clientY - r.top : e.clientX - r.left);
     activeRaw.set(dragging || s.reduceMotion ? 0 : 1);
   };
+
+  // ---------- system monitor opener (footer)
+  //
+  // Hover arms the popup after the configured `hoverDelayMs`; a click toggles
+  // it for pointer-less users. The popup anchors to the **footer**, not to the
+  // whole capsule, so it appears where the meters are. Crossing the gap
+  // between footer and popup is safe: `flyoutOpen` (backend + local flag)
+  // suspends auto-hide until the popup is dismissed (Escape / rail auto-hide).
+  const footRef = useRef<HTMLDivElement | null>(null);
+  const hoverArm = useRef(0);
+  const openSys = useCallback(() => {
+    const el = footRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    void api.showFlyout({ kind: 'sys', id: 'sys', x: r.left, y: r.top, w: r.width, h: r.height, width: 320, height: 320 });
+  }, [api]);
+  useEffect(() => () => window.clearTimeout(hoverArm.current), []);
 
   // ---------- hit area for click-through outside the capsule
   const capRef = useRef<HTMLDivElement | null>(null);
@@ -288,6 +310,11 @@ export function Rail() {
               <MicroButton label="Настройки" onClick={() => void api.openSettings()}>
                 <SlidersHorizontal size={13} strokeWidth={2.2} />
               </MicroButton>
+              {saveError ? (
+                <span className="save-warn" data-interactive="" title={`Конфиг не сохранён: ${saveError}`} aria-label="Ошибка сохранения конфига">
+                  <AlertTriangle size={13} strokeWidth={2.2} />
+                </span>
+              ) : null}
             </motion.div>
             <motion.div className="rail-sep" style={axisStyle(negHalf)} />
 
@@ -366,43 +393,28 @@ export function Rail() {
               <>
                 <motion.div className="rail-sep" style={axisStyle(half)} />
                 <motion.div
+                  ref={footRef}
                   className="rail-foot"
                   style={axisStyle(half)}
                   data-interactive=""
                   role="button"
                   tabIndex={0}
                   aria-label="Монитор системных приложений"
+                  onPointerEnter={() => {
+                    if (flyoutOpen) return;
+                    window.clearTimeout(hoverArm.current);
+                    hoverArm.current = window.setTimeout(openSys, s.hoverDelayMs);
+                  }}
+                  onPointerLeave={() => window.clearTimeout(hoverArm.current)}
                   onClick={() => {
-                    const el = capRef.current;
-                    if (!el) return;
-                    const r = el.getBoundingClientRect();
-                    void api.showFlyout({
-                      kind: 'sys',
-                      id: 'sys',
-                      x: r.left,
-                      y: r.top,
-                      w: r.width,
-                      h: r.height,
-                      width: 300,
-                      height: 280,
-                    });
+                    window.clearTimeout(hoverArm.current);
+                    if (flyoutOpen) void api.hideFlyout();
+                    else openSys();
                   }}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' || e.key === ' ') {
                       e.preventDefault();
-                      const el = capRef.current;
-                      if (!el) return;
-                      const r = el.getBoundingClientRect();
-                      void api.showFlyout({
-                        kind: 'sys',
-                        id: 'sys',
-                        x: r.left,
-                        y: r.top,
-                        w: r.width,
-                        h: r.height,
-                        width: 300,
-                        height: 280,
-                      });
+                      openSys();
                     }
                   }}
                 >

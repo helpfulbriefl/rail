@@ -1,7 +1,7 @@
 //! Background loop: cursor hit-testing, edge reveal, window/process scan, metrics.
-use crate::core::Shared;
+use crate::core::{self, Shared};
 use crate::win;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::time::{Duration, Instant};
 use sysinfo::{ProcessRefreshKind, ProcessesToUpdate, System, UpdateKind};
@@ -30,25 +30,113 @@ pub struct SysRt {
     pub mem_total: u64,
 }
 
-#[derive(Serialize, Clone, Default)]
+/// One process of an aggregated application. `start_time` is what makes the
+/// identity stable: a PID alone is recycled by Windows within seconds.
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct SysProc {
+    pub pid: u32,
+    pub start_time: u64,
+}
+
+/// One aggregated application in the system-wide monitor.
+#[derive(Serialize, Clone, Default, Debug)]
 pub struct SysApp {
+    /// normalized full exe path — the frozen identity, never a bare basename
     pub id: String,
     pub name: String,
+    /// % of total logical CPU (all cores = 100%)
     pub cpu: f32,
+    /// working-set bytes (all processes under this exe summed)
     pub mem: u64,
+    /// representative PID (lowest) for display only
     pub pid: u32,
+    /// every process aggregated into this row, with its start time
+    pub procs: Vec<SysProc>,
+    /// validated top-level windows this row could ask to close
+    pub windows: usize,
+    /// false for Rail's own exe and for protected / shell processes
     pub closable: bool,
 }
 
 #[derive(Serialize, Clone, Default)]
+#[serde(rename_all = "camelCase")]
 pub struct RuntimePayload {
     pub items: HashMap<String, ItemRt>,
     pub sys: SysRt,
     pub sys_top: Vec<SysApp>,
+    /// wall-clock ms of the sample behind `sys` / `sys_top`
+    pub ts: u64,
+    /// monotonically increasing frame counter
+    pub seq: u64,
 }
 
-fn file_name(p: &str) -> &str {
-    p.rsplit(['\\', '/']).next().unwrap_or(p)
+/// Which metric a ranking is ordered by.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Metric {
+    Cpu,
+    Ram,
+}
+
+/// Processes that must never receive a close request from the monitor.
+///
+/// This is an explicit identity list, not a path-substring heuristic: a
+/// `contains("system32")` test would also refuse Notepad, Paint or Calc, which
+/// are exactly the disposable apps the close path has to be tested against.
+const CRITICAL_EXES: [&str; 11] = [
+    "csrss.exe",
+    "wininit.exe",
+    "winlogon.exe",
+    "smss.exe",
+    "services.exe",
+    "lsass.exe",
+    "svchost.exe",
+    "dwm.exe",
+    "explorer.exe",
+    "runtimebroker.exe",
+    "sihost.exe",
+];
+
+/// True when this executable must not be closed by the mini monitor.
+pub fn is_protected_exe(path: &str, own_exe: &str) -> bool {
+    let p = core::norm_path(path);
+    if p.is_empty() {
+        return true;
+    }
+    if !own_exe.is_empty() && p == core::norm_path(own_exe) {
+        return true; // never let the ranking close Rail itself
+    }
+    CRITICAL_EXES.contains(&core::file_name(&p))
+}
+
+/// Deterministic ranking: selected metric first, the other metric as the
+/// tie-break, then the full path so equal values never reorder between frames.
+pub fn rank_top(mut apps: Vec<SysApp>, metric: Metric, limit: usize) -> Vec<SysApp> {
+    apps.sort_by(|a, b| match metric {
+        Metric::Cpu => b.cpu.total_cmp(&a.cpu).then_with(|| b.mem.cmp(&a.mem)).then_with(|| a.id.cmp(&b.id)),
+        Metric::Ram => b.mem.cmp(&a.mem).then_with(|| b.cpu.total_cmp(&a.cpu)).then_with(|| a.id.cmp(&b.id)),
+    });
+    apps.truncate(limit);
+    apps
+}
+
+/// Bounded snapshot that can genuinely answer *both* rankings.
+///
+/// The old code sorted by RAM and published five rows, so the CPU tab could only
+/// ever reorder those five — a CPU-heavy, low-memory application was invisible.
+/// Publishing the union of both top-`per_metric` lists (capped) keeps the payload
+/// small while making either tab a real system-wide top-N.
+pub fn sys_snapshot(apps: Vec<SysApp>, per_metric: usize, cap: usize) -> Vec<SysApp> {
+    let mut out: Vec<SysApp> = Vec::new();
+    for m in [Metric::Cpu, Metric::Ram] {
+        for a in rank_top(apps.clone(), m, per_metric) {
+            if !out.iter().any(|x| x.id == a.id) {
+                out.push(a);
+            }
+        }
+    }
+    out.truncate(cap);
+    out
 }
 
 /// Per-item exponential smoothing state. Raw `sysinfo` samples swing by tens of
@@ -90,10 +178,16 @@ pub fn spawn(app: AppHandle, core: Shared) {
         // sawtooth down to zero between real samples.
         let mut last_sys: Option<SysRt> = None;
         let mut last_m: HashMap<String, (usize, f32, u64, u64, u64, u64)> = HashMap::new();
+        // Same carry-forward for the system-wide list: an interim windows-only
+        // frame used to erase the whole monitor.
+        let mut last_top: Vec<SysApp> = Vec::new();
+        let mut last_ts: u64 = 0;
+        let mut seq: u64 = 0;
+        let mut last_err: Option<String> = None;
         loop {
-            let (visible, fast, dragging) = {
+            let (visible, fast, dragging, flyout_open) = {
                 let rt = core.rt.lock().unwrap_or_else(|e| e.into_inner());
-                (rt.visible, rt.fast_until.map(|t| t > Instant::now()).unwrap_or(false), rt.dragging())
+                (rt.visible, rt.fast_until.map(|t| t > Instant::now()).unwrap_or(false), rt.dragging(), rt.flyout_open)
             };
             cursor_tick(&app, &core);
 
@@ -104,7 +198,11 @@ pub fn spawn(app: AppHandle, core: Shared) {
                 // Faster sampling only added jitter, it never added information.
                 // While dragging we publish nothing — a re-render mid-gesture
                 // reflows the dock and makes the drop index jump.
-                let with_metrics = visible && !dragging && last_metrics.elapsed() >= Duration::from_millis(1400);
+                // The mini monitor keeps ~1 s cadence while it is actually open,
+                // even if the rail itself auto-hid behind it.
+                let want_metrics = (visible || flyout_open) && !dragging;
+                let metric_every = if flyout_open { 1000 } else { 1400 };
+                let with_metrics = want_metrics && last_metrics.elapsed() >= Duration::from_millis(metric_every);
                 if with_metrics {
                     last_metrics = Instant::now();
                 }
@@ -146,10 +244,14 @@ pub fn spawn(app: AppHandle, core: Shared) {
                     // can repeat it instead of publishing zeros.
                     last_sys = Some(payload.sys.clone());
                     last_m = payload.items.iter().map(|(id, r)| (id.clone(), (r.procs, r.cpu, r.mem, r.read, r.write, r.uptime))).collect();
-                } else if let Some(prev) = &last_sys {
+                    last_top = payload.sys_top.clone();
+                    last_ts = payload.ts;
+                } else {
                     // Carry-forward: window/process counts stay fresh from `enum_windows`,
                     // only the sampled fields are reused from the last real frame.
-                    payload.sys = prev.clone();
+                    if let Some(prev) = &last_sys {
+                        payload.sys = prev.clone();
+                    }
                     for (id, r) in payload.items.iter_mut() {
                         if let Some(&(procs, cpu, mem, read, write, uptime)) = last_m.get(id) {
                             r.procs = procs;
@@ -160,11 +262,24 @@ pub fn spawn(app: AppHandle, core: Shared) {
                             r.uptime = uptime;
                         }
                     }
+                    // …and the system list survives an interim frame unchanged,
+                    // still stamped with the timestamp of the sample it came from.
+                    payload.sys_top = last_top.clone();
+                    payload.ts = last_ts;
                 }
+                seq += 1;
+                payload.seq = seq;
                 // Only the dock and the flyout render runtime data. Broadcasting woke
                 // the settings webview on every tick for nothing.
                 let _ = app.emit_to("rail", "runtime", payload.clone());
                 let _ = app.emit_to("flyout", "runtime", payload);
+                // Surface persistence failures once per change (the UI must be
+                // able to say "config not saved" instead of silently losing it).
+                let err = core.last_save_error();
+                if err != last_err {
+                    last_err = err.clone();
+                    let _ = app.emit("save-error", err.unwrap_or_default());
+                }
             }
             std::thread::sleep(Duration::from_millis(if visible { 33 } else { 90 }));
         }
@@ -176,10 +291,11 @@ fn cursor_tick(app: &AppHandle, core: &Shared) {
     let (cx, cy) = (cx as f64, cy as f64);
     let fg = win::foreground();
     let lbtn = win::lbutton_down();
-    let (side, edge_reveal, reveal_ms) = {
+    let (side, edge_reveal, hide_delay) = {
         let c = core.cfg.lock().unwrap_or_else(|e| e.into_inner());
-        (c.settings.side.clone(), c.settings.edge_reveal, 260u64)
+        (c.settings.side.clone(), c.settings.edge_reveal, c.settings.hide_delay_ms)
     };
+    let reveal_ms = 260u64;
 
     // Snapshot all rt fields we need in one lock acquisition to avoid deadlock.
     // work_for_point() round-trips to the main thread through monitor_from_point(), so it
@@ -191,6 +307,7 @@ fn cursor_tick(app: &AppHandle, core: &Shared) {
     let work = if !visible && edge_reveal { Some(work_for_point(app, cx, cy)) } else { None };
 
     let mut show = false;
+    let mut hide_flyout = false;
     let mut hover_changed: Option<bool> = None;
     {
         let mut rt = core.rt.lock().unwrap_or_else(|e| e.into_inner());
@@ -227,6 +344,26 @@ fn cursor_tick(app: &AppHandle, core: &Shared) {
             // flipped to hidden between our read and the lock) just retry next tick
             let Some(w) = work else {
                 rt.edge_since = None;
+                // the flyout away-timer must still run when the rail is hidden
+                let mut hide_now = false;
+                if rt.flyout_open {
+                    let over_flyout = rt.flyout_rect.map(|fr| fr.contains(cx, cy)).unwrap_or(false);
+                    if !over_flyout {
+                        let since = *rt.flyout_away.get_or_insert_with(Instant::now);
+                        if since.elapsed() >= Duration::from_millis(hide_delay.into()) {
+                            rt.flyout_open = false;
+                            rt.flyout_rect = None;
+                            rt.flyout_away = None;
+                            hide_now = true;
+                        }
+                    } else {
+                        rt.flyout_away = None;
+                    }
+                }
+                drop(rt); // release before calling anything that re-locks
+                if hide_now {
+                    crate::hide_flyout_inner(app, core);
+                }
                 return;
             };
             // A wider band while the left button is held: dragging a file from
@@ -264,9 +401,32 @@ fn cursor_tick(app: &AppHandle, core: &Shared) {
                 rt.edge_since = None;
             }
         }
+        // Flyout keepalive / away-dismiss: the popup is click-through, so the
+        // cursor being over its rect is the only signal that someone is still
+        // reading it. Crossing the gap (rail capsule → popup) keeps the timer
+        // reset through either zone; leaving both for `hide_delay_ms` dismisses.
+        if rt.flyout_open {
+            let over_flyout = rt.flyout_rect.map(|fr| fr.contains(cx, cy)).unwrap_or(false);
+            if over_flyout || rt.hover {
+                rt.flyout_away = None;
+            } else {
+                let since = *rt.flyout_away.get_or_insert_with(Instant::now);
+                if since.elapsed() >= Duration::from_millis(hide_delay.into()) {
+                    rt.flyout_open = false;
+                    rt.flyout_rect = None;
+                    rt.flyout_away = None;
+                    hide_flyout = true;
+                }
+            }
+        } else {
+            rt.flyout_away = None;
+        }
     }
     if let Some(h) = hover_changed {
         let _ = app.emit("rail-hover", h);
+    }
+    if hide_flyout {
+        crate::hide_flyout_inner(app, core);
     }
     if show {
         crate::show_rail(app, core);
@@ -287,7 +447,7 @@ pub fn work_for_point(app: &AppHandle, x: f64, y: f64) -> crate::core::Rect {
 fn scan(core: &Shared, paths: &mut win::PathCache, sys: &mut System, metrics: bool) -> RuntimePayload {
     let items: Vec<(String, String)> = {
         let c = core.cfg.lock().unwrap_or_else(|e| e.into_inner());
-        c.items.iter().filter(|i| !i.target.is_empty()).map(|i| (i.id.clone(), i.target.clone())).collect()
+        c.items.iter().filter(|i| !i.target.is_empty()).map(|i| (i.id.clone(), core::norm_path(&i.target))).collect()
     };
     let own: Vec<isize> = core.rt.lock().unwrap_or_else(|e| e.into_inner()).own.clone();
     let wins = win::enum_windows();
@@ -299,7 +459,7 @@ fn scan(core: &Shared, paths: &mut win::PathCache, sys: &mut System, metrics: bo
         }
         alive.insert(w.pid);
         if let Some(p) = paths.get(w.pid) {
-            by_path.entry(p).or_default().push(w);
+            by_path.entry(core::norm_path(&p)).or_default().push(w);
         }
     }
     paths.retain(&alive);
@@ -307,13 +467,12 @@ fn scan(core: &Shared, paths: &mut win::PathCache, sys: &mut System, metrics: bo
     let mut out = RuntimePayload::default();
     let mut item_windows = HashMap::new();
     for (id, target) in &items {
-        let list: Vec<win::AppWindow> = match by_path.get(target) {
-            Some(v) => v.clone(),
-            None => {
-                let fname = file_name(target);
-                by_path.iter().filter(|(p, _)| file_name(p) == fname).flat_map(|(_, v)| v.clone()).collect()
-            }
-        };
+        // Full-path identity only. A basename fallback would let two different
+        // installations of `app.exe` share one row, so activate / minimize /
+        // close and the metrics would hit whichever process was enumerated
+        // first. An item whose executable is not running simply reports zero
+        // windows — that is "unavailable", not a guess.
+        let list: Vec<win::AppWindow> = by_path.get(target).cloned().unwrap_or_default();
         let rt = ItemRt {
             windows: list.len(),
             hung: list.iter().any(|w| w.hung),
@@ -335,14 +494,10 @@ fn scan(core: &Shared, paths: &mut win::PathCache, sys: &mut System, metrics: bo
         let ncpu = sys.cpus().len().max(1) as f32;
         out.sys = SysRt { cpu: sys.global_cpu_usage(), mem_used: sys.used_memory(), mem_total: sys.total_memory() };
         let targets: HashMap<&str, &str> = items.iter().map(|(id, t)| (t.as_str(), id.as_str())).collect();
-        let names: HashMap<&str, &str> = items.iter().map(|(id, t)| (file_name(t), id.as_str())).collect();
         for p in sys.processes().values() {
             let Some(exe) = p.exe() else { continue };
-            let exe = exe.to_string_lossy().to_lowercase();
-            let id = match targets.get(exe.as_str()).or_else(|| names.get(file_name(&exe))) {
-                Some(id) => *id,
-                None => continue,
-            };
+            let exe = core::norm_path(&exe.to_string_lossy());
+            let Some(id) = targets.get(exe.as_str()).copied() else { continue };
             if let Some(r) = out.items.get_mut(id) {
                 r.procs += 1;
                 r.cpu += p.cpu_usage() / ncpu;
@@ -354,40 +509,40 @@ fn scan(core: &Shared, paths: &mut win::PathCache, sys: &mut System, metrics: bo
             }
         }
 
-        // ---- system-wide top-5 by exe path (aggregate multi-process apps) ----
-        let own_exe = std::env::current_exe()
-            .map(|p| p.to_string_lossy().to_lowercase())
-            .unwrap_or_default();
-        let mut by_exe: HashMap<String, (String, u32, f32, u64)> = HashMap::new();
+        // ---- system-wide aggregation by full exe path ----
+        let own_exe = std::env::current_exe().map(|p| p.to_string_lossy().to_string()).unwrap_or_default();
+        let mut by_exe: HashMap<String, (String, u32, f32, u64, Vec<SysProc>)> = HashMap::new();
         for p in sys.processes().values() {
             let Some(exe) = p.exe() else { continue };
-            let exe = exe.to_string_lossy().to_lowercase();
-            if exe == own_exe {
+            let exe = core::norm_path(&exe.to_string_lossy());
+            if exe.is_empty() || exe == core::norm_path(&own_exe) {
                 continue;
             }
             let name = p.name().to_string_lossy().to_string();
-            let entry = by_exe.entry(exe.clone()).or_insert_with(|| (name, p.pid().as_u32(), 0.0, 0));
+            let pid = p.pid().as_u32();
+            let entry = by_exe.entry(exe.clone()).or_insert_with(|| (name, pid, 0.0, 0, Vec::new()));
             entry.2 += p.cpu_usage() / ncpu;
             entry.3 += p.memory();
+            entry.4.push(SysProc { pid, start_time: p.start_time() });
+            if pid < entry.1 {
+                entry.1 = pid;
+            }
         }
-        let closable: HashSet<String> = by_path.keys().cloned().collect();
-        let mut top: Vec<SysApp> = by_exe
-            .iter()
-            .filter(|(exe, _)| {
-                let e = exe.as_str();
-                !e.contains("system32") && !e.contains("drvfail") && !e.contains("svchost")
-            })
-            .map(|(exe, (name, pid, cpu, mem))| SysApp {
-                id: exe.clone(),
-                name: name.clone(),
-                cpu: *cpu,
-                mem: *mem,
-                pid: *pid,
-                closable: closable.contains(exe.as_str()) || exe.ends_with(".exe"),
+        let mut all: Vec<SysApp> = by_exe
+            .into_iter()
+            .map(|(exe, (name, pid, cpu, mem, mut procs))| {
+                procs.sort_by_key(|p| p.pid);
+                // A row is closable when the exe is not protected *and* it
+                // actually owns a validated top-level window. `ends_with(".exe")`
+                // used to mark window-less background processes as closable.
+                let windows = by_path.get(&exe).map(|v| v.len()).unwrap_or(0);
+                let closable = windows > 0 && !is_protected_exe(&exe, &own_exe);
+                SysApp { id: exe, name, cpu, mem, pid, procs, windows, closable }
             })
             .collect();
-        top.sort_by(|a, b| b.mem.cmp(&a.mem).then(b.cpu.total_cmp(&a.cpu)));
-        out.sys_top = top.into_iter().take(5).collect();
+        // Bounded snapshot that still answers both rankings (see sys_snapshot).
+        out.sys_top = sys_snapshot(std::mem::take(&mut all), 6, 12);
+        out.ts = crate::config::now();
     }
 
     let mut rt = core.rt.lock().unwrap_or_else(|e| e.into_inner());
@@ -403,4 +558,74 @@ fn scan(core: &Shared, paths: &mut win::PathCache, sys: &mut System, metrics: bo
     }
     rt.item_windows = item_windows;
     out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn app(id: &str, cpu: f32, mem: u64) -> SysApp {
+        SysApp { id: id.to_string(), name: id.to_string(), cpu, mem, pid: 1, procs: vec![], windows: 1, closable: true }
+    }
+
+    #[test]
+    fn ram_ranking_is_system_wide_not_a_reorder_of_five() {
+        let apps = vec![app("a", 1.0, 100), app("b", 2.0, 900), app("c", 3.0, 500), app("d", 4.0, 50), app("e", 5.0, 800), app("f", 6.0, 10)];
+        let top = rank_top(apps, Metric::Ram, 5);
+        assert_eq!(top.iter().map(|a| a.id.as_str()).collect::<Vec<_>>(), vec!["b", "e", "c", "a", "d"]);
+    }
+
+    #[test]
+    fn cpu_ranking_includes_a_cpu_heavy_low_ram_app() {
+        // the regression the old "sort by RAM, take 5" caused: `d` burns CPU but
+        // is 6th by memory, so it never reached the CPU tab at all.
+        let apps = vec![app("a", 1.0, 900), app("b", 2.0, 800), app("c", 3.0, 700), app("d", 90.0, 5), app("e", 5.0, 600), app("f", 6.0, 500)];
+        let top = rank_top(apps.clone(), Metric::Cpu, 5);
+        assert_eq!(top[0].id, "d");
+        assert!(top.iter().any(|a| a.id == "d"));
+        // and the published snapshot must still carry it for the CPU tab
+        let snap = sys_snapshot(apps, 6, 12);
+        assert!(snap.iter().any(|a| a.id == "d"), "snapshot must contain the CPU-heavy app");
+    }
+
+    #[test]
+    fn ties_are_deterministic() {
+        let apps = vec![app("z", 5.0, 100), app("a", 5.0, 100), app("m", 5.0, 100)];
+        let first = rank_top(apps.clone(), Metric::Cpu, 3);
+        let second = rank_top(apps, Metric::Cpu, 3);
+        assert_eq!(first.iter().map(|a| a.id.as_str()).collect::<Vec<_>>(), vec!["a", "m", "z"]);
+        assert_eq!(first.iter().map(|a| a.id.as_str()).collect::<Vec<_>>(), second.iter().map(|a| a.id.as_str()).collect::<Vec<_>>());
+    }
+
+    #[test]
+    fn snapshot_is_bounded_and_deduplicated() {
+        let apps: Vec<SysApp> = (0..40).map(|i| app(&format!("a{i:02}"), i as f32, (40 - i) as u64 * 10)).collect();
+        let snap = sys_snapshot(apps, 6, 12);
+        assert!(snap.len() <= 12, "payload must stay bounded, got {}", snap.len());
+        let ids: HashSet<&str> = snap.iter().map(|a| a.id.as_str()).collect();
+        assert_eq!(ids.len(), snap.len(), "no duplicate rows");
+    }
+
+    #[test]
+    fn protected_policy_is_identity_based_not_a_substring() {
+        let own = "C:\\App\\rail.exe";
+        assert!(is_protected_exe("C:\\Windows\\System32\\csrss.exe", own));
+        assert!(is_protected_exe("c:\\windows\\system32\\svchost.exe", own));
+        assert!(is_protected_exe("C:\\Windows\\explorer.exe", own));
+        assert!(is_protected_exe("C:\\App\\rail.exe", own), "Rail must never close itself");
+        // disposable Windows accessories stay closable — they are what the close
+        // path is tested against, and a `contains("system32")` rule would refuse them
+        assert!(!is_protected_exe("C:\\Windows\\System32\\notepad.exe", own));
+        assert!(!is_protected_exe("C:\\Windows\\System32\\mspaint.exe", own));
+        assert!(!is_protected_exe("C:\\Users\\me\\App\\app.exe", own));
+        assert!(is_protected_exe("", own), "an unresolved identity is never closable");
+    }
+
+    #[test]
+    fn same_basename_different_directory_stays_two_rows() {
+        let a = app("c:\\one\\app.exe", 1.0, 10);
+        let b = app("c:\\two\\app.exe", 1.0, 10);
+        let snap = sys_snapshot(vec![a, b], 6, 12);
+        assert_eq!(snap.len(), 2, "two directories must not collapse into one identity");
+    }
 }
