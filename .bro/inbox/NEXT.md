@@ -1,5 +1,5 @@
 ---
-wave: S3-RECONCILE · prev: S3-AUTH
-task: .bro/exchange/S3-AUTH/05-RECONCILE-TASK.md · accept: .bro/exchange/S3-AUTH/03-ACCEPT.md
+wave: W3-MICRO · prev: S3-RECONCILE
+task: .bro/exchange/W3-MICRO/01-TASK.md · accept: .bro/exchange/S3-AUTH/07-DELIVERY-ACCEPT.md
 ---
-Owner selected existing command-local GCM credentials helpfulbriefl. Analyst issued safe fetch / verified fast-forward-only reconciliation / allowed .bro publication. Read TASK; no secret extraction, account switch, global config change, force/reset/rebase or data discard. Product implementation remains queued until actual S3 push and remote verification. Expected analyst main advances are documented in ACCEPT. Preserve local errata and untracked .github. No further broad design wave: approved MICRO repair and system mini-monitor are next.
+S3 publication accepted. BRO GO authorizes bounded product implementation under TASK allow-list: increment A geometry/stable motion/actions and approved light themes (Glass default, Classic Windows retained); increment B real system top-five mini monitor with safe normal-close controls. Preserve working native drag/drop. No new broad reconnaissance/design wave, dependency migration, auth bypass or destructive Git operations. Synchronize this analyst documentation by verified fast-forward only before begin; retain intentional untracked .github and Owner data. Read TASK and W2 Owner approval, then run existing BRO protocol and deliver tested EXE provenance/native evidence honestly.
