@@ -1,5 +1,5 @@
 ---
-wave: W3-MICRO · prev: S3-RECONCILE
-task: .bro/exchange/W3-MICRO/01-TASK.md · accept: .bro/exchange/S3-AUTH/07-DELIVERY-ACCEPT.md
+wave: W3B-FIX · prev: W3-MICRO
+task: .bro/exchange/W3B-FIX/01-TASK.md · accept: .bro/exchange/W3-MICRO/03-ACCEPT.md
 ---
-S3 publication accepted. BRO GO authorizes bounded product implementation under TASK allow-list: increment A geometry/stable motion/actions and approved light themes (Glass default, Classic Windows retained); increment B real system top-five mini monitor with safe normal-close controls. Preserve working native drag/drop. No new broad reconnaissance/design wave, dependency migration, auth bypass or destructive Git operations. Synchronize this analyst documentation by verified fast-forward only before begin; retain intentional untracked .github and Owner data. Read TASK and W2 Owner approval, then run existing BRO protocol and deliver tested EXE provenance/native evidence honestly.
+W3 source/report publication confirmed; functional acceptance CHANGES REQUIRED. Execute targeted fixes: native sys popup click-through/lifecycle, true CPU/RAM top-five, sample continuity/history, snapshot-safe normal close and interaction freeze, original clipping/jitter repair with native proof, rebuilt EXE delivery. Keep approved themes/default Glass and working OLE. No broad redesign/recon, dependency migration or auth detour. Synchronize analyst docs safely before begin; preserve P/untracked .github/earlier reports/tags. Six acceptance rows, real proofs; unsupported native checks remain PARTIAL.
