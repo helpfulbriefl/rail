@@ -1,0 +1,8 @@
+before-order(names): vs_prj > Comet
+before-order(ids):   i1a13a2895af1f4ed962,i1a13a2809bd1091ec23
+comet-up: visible=True drag(2518,500)->(2518,432)  order vs_prj > Comet  changed=False
+folder-down: visible=True drag(2518,452)->(2518,524)  order vs_prj > Comet  changed=False
+comet-up2: reveal-fail
+final-order(names): vs_prj > Comet
+reorder-executed: False
+REORDER DONE

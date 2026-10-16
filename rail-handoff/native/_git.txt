@@ -1,0 +1,28 @@
+=== git status ===
+ M qa/visual.mjs
+ M src-tauri/src/main.rs
+ M src/rail/Rail.tsx
+ M src/rail/Tile.tsx
+ M src/rail/magnify.ts
+ M src/styles/app.css
+?? .github/
+?? docs/rail-hover-stability.zip
+?? rail-handoff/
+=== git diff --stat ===
+ qa/visual.mjs         | 188 +++++++++++++++++++++++++++++++++++++++++++++++---
+ src-tauri/src/main.rs | 102 ++++++++++++++++-----------
+ src/rail/Rail.tsx     | 146 ++++++++++++++++++++++-----------------
+ src/rail/Tile.tsx     |  69 ++++++++----------
+ src/rail/magnify.ts   |  53 +++++++-------
+ src/styles/app.css    |  87 +++++++++++++++++++++--
+ 6 files changed, 462 insertions(+), 183 deletions(-)
+=== last commit (no new commits) ===
+cba74d7 docs(w3c-cont): record Q-01 remote-publish permission blocker (403, active gh account lacks write)
+fea863e docs(w3c-cont): continuation report, corrected evidence index, Owner native checklist, rebuilt EXE provenance
+c3b9db1 fix(w3c-cont): independent pointer/focus/press freeze guards, tombstones when all apps vanish, loading placeholders, event-sequence QA
+=== untracked in handoff ===
+?? rail-handoff/native/_cfg.txt
+?? rail-handoff/native/_diag-base.txt
+?? rail-handoff/native/_ramp-out.txt
+?? rail-handoff/native/_reorder-out.txt
+?? rail-handoff/native/_stationary-out.txt

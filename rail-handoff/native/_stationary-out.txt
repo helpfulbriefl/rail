@@ -1,0 +1,10 @@
+=== stationary re-verification (rail hwnd 0x221C8E, pid 33984) ===
+diag @start: region-set=35  region-skip=1
+pre-phase hidden-check IsWindowVisible=False
+CENTER hold3s: trace=Falsex30  trueCt=0 falseCt=30 transitions=0
+BOUNDARY-top hold2s: trace=Falsex20  trueCt=0 transitions=0
+BOUNDARY-bottom hold2s: trace=Falsex20  trueCt=0 transitions=0
+FOOTER/hover: after-edge-reveal=True hold3s trace=Truex21 Falsex9  trueCt=21 falseCt=9 transitions=1
+post auto-hide IsWindowVisible=False
+diag @end:   region-set=36  region-skip=1
+STATIONARY DONE

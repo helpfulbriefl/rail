@@ -1,0 +1,4 @@
+first-True at sample 8 ( 200 ms )
+brightness ramp across reveal-fade frames: 0,934, 0,83, 0,826, 0,825, 0,826, 0,826, 0,826, 0,822, 0,822, 0,823, 0,823, 0,824
+frame count: 12
+RAMP DONE

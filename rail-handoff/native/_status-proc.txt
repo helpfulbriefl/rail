@@ -1,0 +1,10 @@
+
+
+ProcessId      : 33984
+ExecutablePath : C:\Users\BazaCode\Desktop\cody-proj\win-utils\rail-publish\src-tauri\target\release\rail.exe
+CreationDate   : 15.10.2026 23:00:14
+
+
+
+4442112
+OK
